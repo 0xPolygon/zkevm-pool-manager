@@ -1,2 +1,2 @@
-# zkevm-pool-manager
+# zkEVM Pool Manager
 zkEVM Pool Manager
