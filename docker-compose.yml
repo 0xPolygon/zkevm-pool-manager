@@ -1,0 +1,49 @@
+version: "3.5"
+networks:
+  default:
+    name: zkevm
+services:
+  zkevm-pool-manager:
+    container_name: zkevm-pool-manager
+    restart: unless-stopped
+    depends_on:
+      zkevm-pool-db:
+        condition: service_healthy
+    image: zkevm-pool-manager
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    ports:
+      - 8123:8123
+    volumes:
+      - ./test/config/test.poolmanager.toml:/app/poolmanager.toml
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "/app/zkevm-pool-manager run --cfg /app/poolmanager.toml"
+
+  zkevm-pool-db:
+    container_name: zkevm-pool-db
+    restart: unless-stopped
+    image: postgres:15
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - 5432:5432
+    volumes:
+      - /var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=pool_user
+      - POSTGRES_PASSWORD=pool_password
+      - POSTGRES_DB=pool_db
+    command:
+      - "postgres"
+      - "-N"
+      - "500"
+
