@@ -13,11 +13,11 @@ import (
 // Endpoints contains implementations for the pool-manager endpoints
 type Endpoints struct {
 	cfg    Config
-	poolDB *db.PoolDB
+	poolDB poolDBInterface
 }
 
 // NewEndpoints creates an new instance of endpoints
-func NewEndpoints(cfg Config, poolDB *db.PoolDB) *Endpoints {
+func NewEndpoints(cfg Config, poolDB poolDBInterface) *Endpoints {
 	e := &Endpoints{cfg: cfg, poolDB: poolDB}
 	return e
 }
@@ -25,7 +25,8 @@ func NewEndpoints(cfg Config, poolDB *db.PoolDB) *Endpoints {
 func (e *Endpoints) SendRawTransaction(httpRequest *http.Request, input string) (interface{}, Error) {
 	tx, err := hexToTx(input)
 	if err != nil {
-		return RPCErrorResponse(InvalidParamsErrorCode, "invalid tx input", err, false)
+		log.Errorf("invalid tx input, error: %v", err)
+		return nil, NewServerErrorWithData(InvalidParamsErrorCode, "invalid tx input", nil)
 	}
 
 	log.Debugf("adding tx %s to the pool", tx.Hash().Hex())
@@ -34,7 +35,7 @@ func (e *Endpoints) SendRawTransaction(httpRequest *http.Request, input string) 
 	err = e.poolDB.AddTx(context.Background(), *dbTx)
 	if err != nil {
 		log.Errorf("error adding tx to pool db, error: %v", err)
-		return RPCErrorResponse(DefaultErrorCode, err.Error(), nil, false)
+		return nil, NewServerErrorWithData(DefaultErrorCode, err.Error(), nil)
 	}
 
 	log.Infof("added tx %s to the pool", tx.Hash().Hex())

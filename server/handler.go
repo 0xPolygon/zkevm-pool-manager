@@ -28,7 +28,6 @@ func (f *endpointData) numParams() int {
 
 type handleRequest struct {
 	Request
-	wsConn      *concurrentWsConn
 	HttpRequest *http.Request
 }
 
@@ -58,20 +57,12 @@ func (h *Handler) Handle(req handleRequest) Response {
 	inArgs := make([]reflect.Value, fd.inNum)
 	inArgs[0] = h.endpoints
 
-	requestHasWebSocketConn := req.wsConn != nil
 	funcHasMoreThanOneInputParams := len(fd.reqt) > 1
-	firstFuncParamIsWebSocketConn := false
 	firstFuncParamIsHttpRequest := false
 	if funcHasMoreThanOneInputParams {
-		firstFuncParamIsWebSocketConn = fd.reqt[1].AssignableTo(reflect.TypeOf(&concurrentWsConn{}))
 		firstFuncParamIsHttpRequest = fd.reqt[1].AssignableTo(reflect.TypeOf(&http.Request{}))
 	}
-	if requestHasWebSocketConn && firstFuncParamIsWebSocketConn {
-		inArgs[1] = reflect.ValueOf(req.wsConn)
-		inArgsOffset++
-	} else if firstFuncParamIsHttpRequest {
-		// If in the future one endponit needs to have both a websocket connection and an http request
-		// we will need to modify this code to properly handle it
+	if firstFuncParamIsHttpRequest {
 		inArgs[1] = reflect.ValueOf(req.HttpRequest)
 		inArgsOffset++
 	}

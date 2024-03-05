@@ -3,7 +3,7 @@ package server
 import "fmt"
 
 const (
-	// DefaultErrorCode pool-manager default error code
+	// DefaultErrorCode default error code
 	DefaultErrorCode = -32000
 	// InvalidRequestErrorCode error code for invalid requests
 	InvalidRequestErrorCode = -32600
@@ -16,12 +16,9 @@ const (
 )
 
 var (
-	// ErrBatchRequestsDisabled returned by the pool-mananger server when a batch request
-	// is detected and the batch requests are disabled via configuration
+	// ErrBatchRequestsDisabled returned by the pool mananger server when a batch request is detected and the batch requests are disabled via configuration
 	ErrBatchRequestsDisabled = fmt.Errorf("batch requests are disabled")
-
-	// ErrBatchRequestsLimitExceeded returned by the server when a batch request
-	// is detected and the number of requests are greater than the configured limit
+	// ErrBatchRequestsLimitExceeded returned by the server when a batch request is detected and the number of requests are greater than the configured limit
 	ErrBatchRequestsLimitExceeded = fmt.Errorf("batch requests limit exceeded")
 )
 

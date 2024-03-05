@@ -64,7 +64,7 @@ build-docker-nc: ## Builds a docker image with the pool manager binary - but wit
 	docker build --no-cache=true -t zkevm-pool-manager -f ./Dockerfile .
 
 .PHONY: run
-run: ## Runs all the services needed to run a local pool manager
+run: ## Runs all the components needed to run a local pool manager
 	docker-compose up -d zkevm-pool-db
 	sleep 2
 	docker-compose up -d zkevm-pool-manager
@@ -92,6 +92,18 @@ update-external-dependencies: ## Updates external dependencies like images, test
 .PHONY: install-git-hooks
 install-git-hooks: ## Moves hook files to the .git/hooks directory
 	cp .github/hooks/* .git/hooks
+
+.PHONY: install-mockery
+install-mockery: ## Installs mockery with the correct version to generate the mocks
+	go install github.com/vektra/mockery/v2@v2.39.0
+
+.PHONY: generate-mocks
+generate-mocks: ## Generates mock files
+	export "GOROOT=$$(go env GOROOT)" && $$(go env GOPATH)/bin/mockery --name=poolDBInterface --dir=./server --output=./server --outpkg=server --inpackage --structname=poolDBMock --filename=mock_pooldb.go
+
+.PHONY: test
+test: ## Runs test files
+	trap '$(STOP)' EXIT; MallocNanoZone=0 go test -count=1 -short -race -p 1 -covermode=atomic -coverprofile=./coverage.out  -coverpkg ./... -timeout 70s ./...
 
 ## Help display.
 ## Pulls comments from beside commands and prints a nicely formatted
