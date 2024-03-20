@@ -31,7 +31,7 @@ QueueSize = 25
 [Monitor]
 L2NodeURL = "http://localhost:8467"
 Workers = 5
-QueueSize = 20
+QueueSize = 25
 RetryWaitInterval = "1s"
 InitialWaitInterval = "0s"
 TxLifeTimeMax = "300s"

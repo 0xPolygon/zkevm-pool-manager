@@ -25,7 +25,7 @@ MaxConns = 200
 [Sender]
 SequencerURL = "http://localhost:8467"
 ResendTxsCheckInterval = "1s"
-NumberWorkers = 5
+Workers = 5
 QueueSize = 25
 
 [Monitor]
