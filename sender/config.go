@@ -11,7 +11,7 @@ type Config struct {
 	ResendTxsCheckInterval types.Duration `mapstructure:"ResendTxsCheckInterval"`
 
 	// Workers is the number of sender workers to send txs to the sequencer
-	Workers uint16 `mapstructure:"NumberWorkers"`
+	Workers uint16 `mapstructure:"Workers"`
 
 	// QueueSize is the size of the queue for L2 txs that need to be sent to the sequencer
 	QueueSize uint16 `mapstructure:"QueueSize"`

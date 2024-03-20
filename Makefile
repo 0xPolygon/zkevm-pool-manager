@@ -57,22 +57,41 @@ build: ## Builds the binary locally into ./dist
 	$(GOENVVARS) go build -ldflags "all=$(LDFLAGS)" -o $(GOBIN)/$(GOBINARY) $(GOCMD)
 
 .PHONY: build-docker
-build-docker: ## Builds a docker image with the pool manager binary
+build-docker: ## Builds a docker image with the pool-manager binary
 	docker build -t zkevm-pool-manager -f ./Dockerfile .
 
 .PHONY: build-docker-nc
-build-docker-nc: ## Builds a docker image with the pool manager binary - but without build cache
+build-docker-nc: ## Builds a docker image with the pool-manager binary - but without build cache
 	docker build --no-cache=true -t zkevm-pool-manager -f ./Dockerfile .
 
 .PHONY: run
-run: ## Runs all the components needed to run a local pool manager
-	docker-compose up -d zkevm-pool-db
+run: ## Runs all the components needed to run a local pool-manager
+	docker compose up -d cdk-erigon
+	docker compose up -d zkevm-pool-db
 	sleep 2
-	docker-compose up -d zkevm-pool-manager
+	docker compose up -d zkevm-pool-manager
 
 .PHONY: run-db
 run-db: ## Runs pool database
-	docker-compose up -d zkevm-pool-db
+	docker compose up -d zkevm-pool-db
+
+.PHONY: stop-db
+stop-db: ## Stops pool database
+	docker compose down zkevm-pool-db
+
+.PHONY: run-seq
+run-seq: ## Runs erigon sequencer
+	docker compose up -d cdk-erigon
+
+.PHONY: stop-seq
+stop-seq: ## Stops erigon sequencer
+	docker compose down cdk-erigon
+
+.PHONY: rm-seq
+rm-seq: ## Removes erigon sequencer data
+	sudo rm -rf ./data/cdk-erigon
+	sudo mkdir ./data/cdk-erigon
+	sudo chmod 777 -R ./data/cdk-erigon
 
 .PHONY: stop
 stop: ## Stops all services
