@@ -2,7 +2,7 @@ package server
 
 import "github.com/0xPolygonHermez/zkevm-pool-manager/config/types"
 
-// Config for pool manager server
+// Config for pool-manager JSON-RPC server
 type Config struct {
 	// Host defines the network adapter that will be used to serve the HTTP requests
 	Host string `mapstructure:"Host"`
@@ -10,12 +10,10 @@ type Config struct {
 	// Port defines the port to serve the endpoints via HTTP
 	Port int `mapstructure:"Port"`
 
-	// ReadTimeout is the HTTP server read timeout
-	// check net/http.server.ReadTimeout and net/http.server.ReadHeaderTimeout
+	// ReadTimeout is the HTTP server read timeout. Check net/http.server.ReadTimeout and net/http.server.ReadHeaderTimeout
 	ReadTimeout types.Duration `mapstructure:"ReadTimeout"`
 
-	// WriteTimeout is the HTTP server write timeout
-	// check net/http.server.WriteTimeout
+	// WriteTimeout is the HTTP server write timeout. Check net/http.server.WriteTimeout
 	WriteTimeout types.Duration `mapstructure:"WriteTimeout"`
 
 	// MaxRequestsPerIPAndSecond defines how much requests a single IP can send within a single second

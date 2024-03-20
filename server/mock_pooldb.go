@@ -14,17 +14,35 @@ type poolDBMock struct {
 	mock.Mock
 }
 
-// AddTx provides a mock function with given fields: ctx, tx
-func (_m *poolDBMock) AddTx(ctx context.Context, tx db.Transaction) error {
+// AddL2Transaction provides a mock function with given fields: ctx, tx
+func (_m *poolDBMock) AddL2Transaction(ctx context.Context, tx *db.L2Transaction) error {
 	ret := _m.Called(ctx, tx)
 
 	if len(ret) == 0 {
-		panic("no return value specified for AddTx")
+		panic("no return value specified for AddL2Transaction")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, db.Transaction) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *db.L2Transaction) error); ok {
 		r0 = rf(ctx, tx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdateL2TransactionStatus provides a mock function with given fields: ctx, txHash, newStatus, errorMsg
+func (_m *poolDBMock) UpdateL2TransactionStatus(ctx context.Context, txHash string, newStatus string, errorMsg string) error {
+	ret := _m.Called(ctx, txHash, newStatus, errorMsg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateL2TransactionStatus")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) error); ok {
+		r0 = rf(ctx, txHash, newStatus, errorMsg)
 	} else {
 		r0 = ret.Error(0)
 	}

@@ -29,10 +29,11 @@ func NewMockConfig() Config {
 
 func TestSendRawTransaction(t *testing.T) {
 	mockPoolDB := &poolDBMock{}
+	mockSender := &senderMock{}
 	cfg := NewMockConfig()
-	errorAddTx := errors.New("failed to add TX to the pool")
+	errorAddTx := errors.New("failed to add tx to the pool")
 
-	endpoints := NewEndpoints(cfg, mockPoolDB)
+	endpoints := NewEndpoints(cfg, mockPoolDB, mockSender)
 
 	type testCase struct {
 		Name          string
@@ -56,7 +57,7 @@ func TestSendRawTransaction(t *testing.T) {
 
 			},
 			SetupMocks: func() {
-				mockPoolDB.On("AddTx", context.Background(), mock.IsType(db.Transaction{})).Return(nil).Once()
+				mockPoolDB.On("AddTx", context.Background(), mock.IsType(db.L2Transaction{})).Return(nil).Once()
 			},
 			ExpectedError: nil,
 		},
@@ -72,7 +73,7 @@ func TestSendRawTransaction(t *testing.T) {
 				require.NoError(t, err)
 			},
 			SetupMocks: func() {
-				mockPoolDB.On("AddTx", context.Background(), mock.IsType(db.Transaction{})).Return(errorAddTx).Once()
+				mockPoolDB.On("AddTx", context.Background(), mock.IsType(db.L2Transaction{})).Return(errorAddTx).Once()
 			},
 			ExpectedError: NewServerErrorWithData(DefaultErrorCode, errorAddTx.Error(), nil),
 		},

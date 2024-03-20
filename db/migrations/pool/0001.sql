@@ -6,12 +6,15 @@ CREATE SCHEMA pool;
 
 CREATE TABLE pool.transaction
 (
-    hash                   VARCHAR PRIMARY KEY,
-    received_at            TIMESTAMP WITH TIME ZONE NOT NULL,
-    from_address           VARCHAR NOT NULL,
-    gas_price              DECIMAL(78, 0),
-    nonce                  DECIMAL(78, 0),
-    status                 VARCHAR,
-    encoded                VARCHAR,
-    decoded                jsonb
+    hash                    VARCHAR PRIMARY KEY,
+    received_at             TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at              TIMESTAMP WITH TIME ZONE NOT NULL,
+    from_address            VARCHAR NOT NULL,
+    gas_price               DECIMAL(78, 0),
+    nonce                   DECIMAL(78, 0),
+    status                  VARCHAR,
+    ip                      VARCHAR,
+    encoded                 VARCHAR,
+    decoded                 jsonb,
+    error                   VARCHAR
 );

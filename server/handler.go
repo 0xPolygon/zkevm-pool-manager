@@ -31,7 +31,7 @@ type handleRequest struct {
 	HttpRequest *http.Request
 }
 
-// Handler manage services to handle pool manager requests
+// Handler manage services to handle pool-manager RPC requests
 type Handler struct {
 	endpoints   reflect.Value
 	endpointMap map[string]*endpointData
@@ -44,11 +44,11 @@ func newJSONRpcHandler() *Handler {
 	return handler
 }
 
-// Handle is the function that knows which and how a function should be executed when a pool manager request is received
+// Handle is the function that knows which and how a function should be executed when a pool-manager RPC request is received
 func (h *Handler) Handle(req handleRequest) Response {
-	log.Debugf("request method: %s, id:%d, params %v", req.Method, req.ID, string(req.Params))
+	log.Debugf("request method: %s, id: %v, params: %s", req.Method, req.ID, string(req.Params))
 
-	fd, err := h.getFnHandler(req.Request)
+	fd, err := h.getFuncHandler(req.Request)
 	if err != nil {
 		return NewResponse(req.Request, nil, err)
 	}
@@ -89,7 +89,7 @@ func (h *Handler) Handle(req handleRequest) Response {
 
 	output := fd.fv.Call(inArgs)
 	if err := getError(output[1]); err != nil {
-		log.Debugf("failed call: [%v]%v. Params: %v", err.ErrorCode(), err.Error(), string(req.Params))
+		log.Debugf("failed call, error: (%d) %s, params: %s", err.ErrorCode(), err.Error(), string(req.Params))
 		return NewResponse(req.Request, nil, err)
 	}
 
@@ -124,7 +124,7 @@ func (h *Handler) registerEndpoints(endpoints interface{}) {
 		}
 		var err error
 		if fd.inNum, fd.reqt, err = validateFunc(funcName, fd.fv, true); err != nil {
-			panic(fmt.Sprintf("invalid function '%s', error:%v", funcName, err))
+			panic(fmt.Sprintf("invalid function '%s', error: %v", funcName, err))
 		}
 		// check if last item is a pointer
 		if fd.numParams() != 0 {
@@ -140,8 +140,8 @@ func (h *Handler) registerEndpoints(endpoints interface{}) {
 	h.endpointMap = funcMap
 }
 
-func (h *Handler) getFnHandler(req Request) (*endpointData, Error) {
-	methodNotFoundErrorMessage := fmt.Sprintf("the method %s does not exist/is not available", req.Method)
+func (h *Handler) getFuncHandler(req Request) (*endpointData, Error) {
+	methodNotFoundErrorMessage := fmt.Sprintf("the function %s does not exist or is not available", req.Method)
 
 	_, funcName, found := strings.Cut(req.Method, "_")
 	if !found {
@@ -150,7 +150,7 @@ func (h *Handler) getFnHandler(req Request) (*endpointData, Error) {
 
 	fd, ok := h.endpointMap[funcName]
 	if !ok {
-		log.Debugf("method %s not found", req.Method)
+		log.Debugf("function '%s' not found", req.Method)
 		return nil, NewServerError(NotFoundErrorCode, methodNotFoundErrorMessage)
 	}
 	return fd, nil
@@ -172,11 +172,11 @@ func validateFunc(funcName string, fv reflect.Value, isMethod bool) (inNum int, 
 	outNum := ft.NumOut()
 
 	if outNum != requiredReturnParamsPerFn {
-		err = fmt.Errorf("unexpected number of output arguments in the function '%s': %d. Expected 2", funcName, outNum)
+		err = fmt.Errorf("unexpected number of output arguments in the function '%s', actual: %d, expected: 2", funcName, outNum)
 		return
 	}
 	if !isRPCErrorType(ft.Out(1)) {
-		err = fmt.Errorf("unexpected type for the second return value of the function '%s': '%s'. Expected '%s'", funcName, ft.Out(1), rpcErrType)
+		err = fmt.Errorf("unexpected type for the second return value of the function '%s', actual: '%s', expected '%s'", funcName, ft.Out(1), rpcErrType)
 		return
 	}
 

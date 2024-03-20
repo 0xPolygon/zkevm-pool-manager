@@ -9,6 +9,7 @@ else
 		ARCH = arm64
 	endif
 endif
+
 GOBASE := $(shell pwd)
 GOBIN := $(GOBASE)/dist
 GOENVVARS := GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH)
@@ -99,7 +100,9 @@ install-mockery: ## Installs mockery with the correct version to generate the mo
 
 .PHONY: generate-mocks
 generate-mocks: ## Generates mock files
-	export "GOROOT=$$(go env GOROOT)" && $$(go env GOPATH)/bin/mockery --name=poolDBInterface --dir=./server --output=./server --outpkg=server --inpackage --structname=poolDBMock --filename=mock_pooldb.go
+	export "GOROOT=$$(go env GOROOT)" && $$(go env GOPATH)/bin/mockery --name=poolDBInterface --dir=./rpc --output=./rpc --outpkg=rpc --inpackage --structname=poolDBMock --filename=mock_pooldb.go
+	export "GOROOT=$$(go env GOROOT)" && $$(go env GOPATH)/bin/mockery --name=senderInterface --dir=./rpc --output=./rpc --outpkg=rpc --inpackage --structname=senderMock --filename=mock_sender.go
+	export "GOROOT=$$(go env GOROOT)" && $$(go env GOPATH)/bin/mockery --name=monitorInterface --dir=./rpc --output=./rpc --outpkg=rpc --inpackage --structname=monitorMock --filename=mock_monitor.go
 
 .PHONY: test
 test: ## Runs test files

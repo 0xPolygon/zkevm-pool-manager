@@ -7,7 +7,9 @@ import (
 
 	"github.com/0xPolygonHermez/zkevm-pool-manager/db"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/log"
-	"github.com/0xPolygonHermez/zkevm-pool-manager/server"
+	"github.com/0xPolygonHermez/zkevm-pool-manager/monitor"
+	"github.com/0xPolygonHermez/zkevm-pool-manager/sender"
+	server "github.com/0xPolygonHermez/zkevm-pool-manager/server"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 	"github.com/urfave/cli/v2"
@@ -25,14 +27,20 @@ const (
 )
 
 type Config struct {
-	// Server configuration
-	Server server.Config
-
 	// Log configuration
 	Log log.Config
 
+	// Server configuration
+	Server server.Config
+
 	// DB configuration
 	DB db.Config
+
+	// Sender configuration
+	Sender sender.Config
+
+	// Monitor configuration
+	Monitor monitor.Config
 }
 
 // Default parses the default configuration values.
@@ -93,5 +101,16 @@ func Load(ctx *cli.Context, loadNetworkConfig bool) (*Config, error) {
 		return nil, err
 	}
 
+	validate(cfg)
+
 	return cfg, nil
+}
+
+func validate(cfg *Config) {
+	if cfg.Monitor.QueueSize < cfg.Monitor.Workers {
+		log.Fatalf("invalid configuration: Monitor.QueueSize must be greater or equal than Monitor.NumberWorkers")
+	}
+	if cfg.Monitor.QueueSize < cfg.Monitor.Workers {
+		log.Fatalf("invalid configuration: Monitor.QueueSize must be greater or equal than Monitor.NumberWorkers")
+	}
 }
