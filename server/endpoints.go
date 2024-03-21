@@ -3,44 +3,97 @@ package server
 import (
 	"context"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/0xPolygonHermez/zkevm-pool-manager/db"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/hex"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/log"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// Endpoints contains implementations for the pool-manager endpoints
+// Endpoints contains implementations for the pool-manager JSON-RPC endpoints
 type Endpoints struct {
 	cfg    Config
 	poolDB poolDBInterface
+	sender senderInterface
 }
 
-// NewEndpoints creates an new instance of endpoints
-func NewEndpoints(cfg Config, poolDB poolDBInterface) *Endpoints {
-	e := &Endpoints{cfg: cfg, poolDB: poolDB}
+// NewEndpoints creates an new instance of pool-manager JSON-RPC endpoints
+func NewEndpoints(cfg Config, poolDB poolDBInterface, sender senderInterface) *Endpoints {
+	e := &Endpoints{cfg: cfg, poolDB: poolDB, sender: sender}
 	return e
 }
 
 func (e *Endpoints) SendRawTransaction(httpRequest *http.Request, input string) (interface{}, Error) {
+	// Get the IP address of the request
+	ip := ""
+	ips := httpRequest.Header.Get("X-Forwarded-For")
+	if ips != "" {
+		ip = strings.Split(ips, ",")[0]
+	}
+
 	tx, err := hexToTx(input)
 	if err != nil {
 		log.Errorf("invalid tx input, error: %v", err)
 		return nil, NewServerErrorWithData(InvalidParamsErrorCode, "invalid tx input", nil)
 	}
 
-	log.Debugf("adding tx %s to the pool", tx.Hash().Hex())
+	txJSON, err := tx.MarshalJSON()
+	if err != nil {
+		log.Errorf("error getting JSON marshal for tx %s, error: %v", tx.Hash(), err)
+		return nil, NewServerErrorWithData(ParserErrorCode, "error parsing tx", nil)
+	}
+	decoded := string(txJSON)
 
-	dbTx := db.NewTransaction(*tx)
-	err = e.poolDB.AddTx(context.Background(), *dbTx)
+	// Get from address
+	fromAddress, err := GetSender(*tx)
+	if err != nil {
+		log.Errorf("error getting from address for tx %s, error: %v", tx.Hash(), err)
+		return nil, NewServerErrorWithData(ParserErrorCode, "error getting from address", nil)
+	}
+
+	log.Debugf("adding tx %s to the pool", tx.Hash())
+
+	l2Tx := &db.L2Transaction{
+		Hash:        tx.Hash().String(),
+		ReceivedAt:  time.Now(),
+		FromAddress: fromAddress.String(),
+		GasPrice:    tx.GasPrice().Uint64(),
+		Nonce:       tx.Nonce(),
+		Status:      db.TxStatusPending,
+		IP:          ip,
+		Encoded:     input,
+		Decoded:     decoded,
+	}
+
+	err = e.poolDB.AddL2Transaction(context.Background(), l2Tx)
 	if err != nil {
 		log.Errorf("error adding tx to pool db, error: %v", err)
+		return nil, NewServerErrorWithData(DefaultErrorCode, "error adding tx to the pool database", nil)
+	}
+
+	err = e.sender.SendL2Transaction(l2Tx)
+
+	if err != nil {
 		return nil, NewServerErrorWithData(DefaultErrorCode, err.Error(), nil)
 	}
 
-	log.Infof("added tx %s to the pool", tx.Hash().Hex())
+	log.Infof("added tx %s to the pool", tx.Hash())
 
-	return tx.Hash().Hex(), nil
+	return tx.Hash().String(), nil
+}
+
+// GetSender gets the sender from the transaction's signature
+func GetSender(tx types.Transaction) (common.Address, error) {
+	signer := types.NewEIP155Signer(tx.ChainId())
+	sender, err := signer.Sender(&tx)
+	if err != nil {
+		return common.Address{}, err
+	}
+	return sender, nil
 }
 
 func hexToTx(str string) (*ethTypes.Transaction, error) {

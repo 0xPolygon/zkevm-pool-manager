@@ -27,24 +27,25 @@ const (
 // https://www.jsonrpc.org/historical/json-rpc-over-http.html#http-header
 var acceptedContentTypes = []string{contentType, "application/json-rpc", "application/jsonrequest"}
 
-// Server represents a JSON-RPC server to handle pool manager requests
+// Server represents a JSON-RPC server to handle pool-manager requests
 type Server struct {
 	config     Config
 	handler    *Handler
 	httpServer *http.Server
+	sender     senderInterface
 }
 
-// NewServer returns a JSON-RPC server to handle pool manager requests
-func NewServer(cfg Config, poolDB *db.PoolDB) *Server {
-	endpoints := NewEndpoints(cfg, poolDB)
+// NewServer returns a JSON-RPC server to handle pool-manager requests
+func NewServer(cfg Config, poolDB *db.PoolDB, sender senderInterface) *Server {
+	endpoints := NewEndpoints(cfg, poolDB, sender)
 
 	handler := newJSONRpcHandler()
 	handler.registerEndpoints(endpoints)
 
-	return &Server{config: cfg, handler: handler}
+	return &Server{config: cfg, handler: handler, sender: sender}
 }
 
-// Start initializes the JSON-RPC server to listen for requests
+// Start initializes pool-manager JSON-RPC server to listen for requests
 func (s *Server) Start() error {
 	if s.httpServer != nil {
 		return fmt.Errorf("HTTP server already started")
@@ -54,7 +55,7 @@ func (s *Server) Start() error {
 
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
-		log.Errorf("failed to create TCP listener: %v", err)
+		log.Errorf("failed to create TCP listener, error: %v", err)
 		return err
 	}
 
@@ -69,13 +70,13 @@ func (s *Server) Start() error {
 		ReadTimeout:       s.config.ReadTimeout.Duration,
 		WriteTimeout:      s.config.WriteTimeout.Duration,
 	}
-	log.Infof("HTTP server started: %s", address)
+	log.Infof("HTTP server started at %s", address)
 	if err := s.httpServer.Serve(lis); err != nil {
 		if err == http.ErrServerClosed {
 			log.Infof("http server stopped")
 			return nil
 		}
-		log.Errorf("closed HTTP connection: %v", err)
+		log.Errorf("closed HTTP connection, error: %v", err)
 		return err
 	}
 	return nil
@@ -272,7 +273,7 @@ func handleError(w http.ResponseWriter, err error) {
 	}
 
 	// if it is a different error, write it to the response
-	log.Errorf("error processing request, err: %v", err)
+	log.Errorf("error processing request, error: %v", err)
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 

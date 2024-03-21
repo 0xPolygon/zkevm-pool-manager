@@ -12,7 +12,9 @@ import (
 	"github.com/0xPolygonHermez/zkevm-pool-manager/config"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/db"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/log"
-	"github.com/0xPolygonHermez/zkevm-pool-manager/server"
+	"github.com/0xPolygonHermez/zkevm-pool-manager/monitor"
+	"github.com/0xPolygonHermez/zkevm-pool-manager/sender"
+	server "github.com/0xPolygonHermez/zkevm-pool-manager/server"
 	"github.com/urfave/cli/v2"
 )
 
@@ -75,7 +77,7 @@ func start(cliCtx *cli.Context) error {
 		logVersion()
 	}
 
-	// Only runs migration if the component is the synchronizer and if the flag is deactivated
+	// Only runs migration if the flag is deactivated
 	if !cliCtx.Bool(config.FlagNoMigrations) {
 		log.Infof("running database migrations, host: %s:%s, db: %s, user: %s", c.DB.Host, c.DB.Port, c.DB.Name, c.DB.User)
 		runPoolMigrations(c.DB)
@@ -84,7 +86,19 @@ func start(cliCtx *cli.Context) error {
 
 	var cancelFuncs []context.CancelFunc
 
-	go runPoolManagerServer(*c)
+	poolDB, err := db.NewPoolDB(c.DB)
+	if err != nil {
+		log.Fatalf("error when creating pool DB instance, error: %v", err)
+	}
+
+	monitor := monitor.NewMonitor(c.Monitor, poolDB)
+	go monitor.Start()
+
+	sender := sender.NewSender(c.Sender, poolDB, monitor)
+	go sender.Start()
+
+	server := server.NewServer(c.Server, poolDB, sender)
+	go server.Start()
 
 	waitSignal(cancelFuncs)
 
@@ -112,18 +126,6 @@ func checkPoolMigrations(c db.Config) {
 	err := db.CheckMigrations(c, db.PoolMigrationName)
 	if err != nil {
 		log.Fatal(err)
-	}
-}
-
-func runPoolManagerServer(cfg config.Config) {
-	poolDB, err := db.NewPoolDB(cfg.DB)
-	if err != nil {
-		log.Fatalf("error when creating PoolDB instance, err: %v", err)
-	}
-
-	err = server.NewServer(cfg.Server, poolDB).Start()
-	if err != nil {
-		log.Fatalf("error when creating pool manager server, err: %v", err)
 	}
 }
 

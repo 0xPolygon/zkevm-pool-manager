@@ -9,6 +9,7 @@ else
 		ARCH = arm64
 	endif
 endif
+
 GOBASE := $(shell pwd)
 GOBIN := $(GOBASE)/dist
 GOENVVARS := GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH)
@@ -56,22 +57,41 @@ build: ## Builds the binary locally into ./dist
 	$(GOENVVARS) go build -ldflags "all=$(LDFLAGS)" -o $(GOBIN)/$(GOBINARY) $(GOCMD)
 
 .PHONY: build-docker
-build-docker: ## Builds a docker image with the pool manager binary
+build-docker: ## Builds a docker image with the pool-manager binary
 	docker build -t zkevm-pool-manager -f ./Dockerfile .
 
 .PHONY: build-docker-nc
-build-docker-nc: ## Builds a docker image with the pool manager binary - but without build cache
+build-docker-nc: ## Builds a docker image with the pool-manager binary - but without build cache
 	docker build --no-cache=true -t zkevm-pool-manager -f ./Dockerfile .
 
 .PHONY: run
-run: ## Runs all the components needed to run a local pool manager
-	docker-compose up -d zkevm-pool-db
+run: ## Runs all the components needed to run a local pool-manager
+	docker compose up -d cdk-erigon
+	docker compose up -d zkevm-pool-db
 	sleep 2
-	docker-compose up -d zkevm-pool-manager
+	docker compose up -d zkevm-pool-manager
 
 .PHONY: run-db
 run-db: ## Runs pool database
-	docker-compose up -d zkevm-pool-db
+	docker compose up -d zkevm-pool-db
+
+.PHONY: stop-db
+stop-db: ## Stops pool database
+	docker compose down zkevm-pool-db
+
+.PHONY: run-seq
+run-seq: ## Runs erigon sequencer
+	docker compose up -d cdk-erigon
+
+.PHONY: stop-seq
+stop-seq: ## Stops erigon sequencer
+	docker compose down cdk-erigon
+
+.PHONY: rm-seq
+rm-seq: ## Removes erigon sequencer data
+	sudo rm -rf ./data/cdk-erigon
+	sudo mkdir ./data/cdk-erigon
+	sudo chmod 777 -R ./data/cdk-erigon
 
 .PHONY: stop
 stop: ## Stops all services
@@ -99,7 +119,9 @@ install-mockery: ## Installs mockery with the correct version to generate the mo
 
 .PHONY: generate-mocks
 generate-mocks: ## Generates mock files
-	export "GOROOT=$$(go env GOROOT)" && $$(go env GOPATH)/bin/mockery --name=poolDBInterface --dir=./server --output=./server --outpkg=server --inpackage --structname=poolDBMock --filename=mock_pooldb.go
+	export "GOROOT=$$(go env GOROOT)" && $$(go env GOPATH)/bin/mockery --name=poolDBInterface --dir=./rpc --output=./rpc --outpkg=rpc --inpackage --structname=poolDBMock --filename=mock_pooldb.go
+	export "GOROOT=$$(go env GOROOT)" && $$(go env GOPATH)/bin/mockery --name=senderInterface --dir=./rpc --output=./rpc --outpkg=rpc --inpackage --structname=senderMock --filename=mock_sender.go
+	export "GOROOT=$$(go env GOROOT)" && $$(go env GOPATH)/bin/mockery --name=monitorInterface --dir=./rpc --output=./rpc --outpkg=rpc --inpackage --structname=monitorMock --filename=mock_monitor.go
 
 .PHONY: test
 test: ## Runs test files

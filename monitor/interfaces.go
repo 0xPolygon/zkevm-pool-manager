@@ -1,4 +1,4 @@
-package server
+package monitor
 
 import (
 	"context"
@@ -7,10 +7,6 @@ import (
 )
 
 type poolDBInterface interface {
-	AddL2Transaction(ctx context.Context, tx *db.L2Transaction) error
 	UpdateL2TransactionStatus(ctx context.Context, txHash string, newStatus string, errorMsg string) error
-}
-
-type senderInterface interface {
-	SendL2Transaction(l2Tx *db.L2Transaction) error
+	GetL2TransactionsToMonitor(ctx context.Context) ([]*db.L2Transaction, error)
 }

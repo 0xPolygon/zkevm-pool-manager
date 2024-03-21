@@ -2,7 +2,7 @@ package server
 
 import "encoding/json"
 
-// Request is a jsonrpc request
+// Request is a jsonrpc Request
 type Request struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      interface{}     `json:"id"`
@@ -10,12 +10,12 @@ type Request struct {
 	Params  json.RawMessage `json:"params,omitempty"`
 }
 
-// Response is a jsonrpc  success response
+// Response is a jsonrpc success/error response
 type Response struct {
-	JSONRPC string
-	ID      interface{}
-	Result  json.RawMessage
-	Error   *ErrorObject
+	JSONRPC string          `json:"jsonrpc"`
+	Id      interface{}     `json:"id"`
+	Result  json.RawMessage `json:"result,omitempty"`
+	Error   *ErrorObject    `json:"error,omitempty"`
 }
 
 // ErrorObject is a jsonrpc error
@@ -55,7 +55,7 @@ func NewResponse(req Request, reply []byte, err Error) Response {
 
 	return Response{
 		JSONRPC: req.JSONRPC,
-		ID:      req.ID,
+		Id:      req.ID,
 		Result:  result,
 		Error:   errorObj,
 	}

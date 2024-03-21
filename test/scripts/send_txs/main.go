@@ -17,7 +17,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	poolManagerURL := "http://localhost:8123"
+	poolManagerURL := "http://localhost:8545"
 	privateKey := "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 	chainID := uint64(1234)
 
@@ -34,8 +34,7 @@ func main() {
 	transferAmount := big.NewInt(1)
 	nonce := uint64(0)
 
-	// var lastTxHash common.Hash
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 1; i++ {
 		nonce := nonce + uint64(i)
 		to := common.HexToAddress(receiverAddr)
 		tx := ethTransfer(ctx, client, auth, to, transferAmount, &nonce)
@@ -57,6 +56,7 @@ func ethTransfer(ctx context.Context, client *ethclient.Client, auth *bind.Trans
 	chkErr(err)
 
 	err = client.SendTransaction(ctx, signedTx)
+
 	chkErr(err)
 
 	return signedTx

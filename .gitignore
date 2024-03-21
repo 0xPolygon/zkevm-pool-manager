@@ -22,3 +22,4 @@ go.work
 
 /dist/
 cmd/__debug_bin
+/data/

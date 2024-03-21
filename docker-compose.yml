@@ -17,7 +17,7 @@ services:
         reservations:
           memory: 512M
     ports:
-      - 8123:8123
+      - 8545:8545
     volumes:
       - ./test/config/test.poolmanager.toml:/app/poolmanager.toml
     command:
@@ -47,3 +47,15 @@ services:
       - "-N"
       - "500"
 
+  cdk-erigon:
+      container_name: cdk-erigon
+      image: hermeznetwork/cdk-erigon:latest
+      ports:
+        - 8467:8467
+      volumes:
+        - ./data/cdk-erigon:/data/cdk-erigon
+        - ./test/config/test.cdk.erigon.yaml:/test.cdk.erigon.yaml
+      environment:
+        - CDK_ERIGON_SEQUENCER=1        
+      command: >
+        --config="/test.cdk.erigon.yaml" --http.addr=0.0.0.0 --http.vhosts=* --http.corsdomain=*

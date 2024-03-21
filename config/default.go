@@ -25,4 +25,18 @@ Host = "zkevm-pool-db"
 Port = "5432"
 EnableLog = false
 MaxConns = 200
+
+[Sender]
+SequencerURL = "http://localhost:8467"
+ResendTxsCheckInterval = "5s"
+Workers = 5
+QueueSize = 25
+
+[Monitor]
+L2NodeURL = "http://localhost:8467"
+Workers = 5
+QueueSize = 25
+RetryWaitInterval = "3s"
+InitialWaitInterval = "3s"
+TxLifeTimeMax = "30m"
 `
