@@ -29,7 +29,7 @@ var (
 	}
 	migrationsFlag = cli.BoolFlag{
 		Name:     config.FlagNoMigrations,
-		Aliases:  []string{"no-mig"},
+		Aliases:  []string{"n"},
 		Usage:    "Disable run migrations in pool database",
 		Required: false,
 	}
@@ -38,6 +38,7 @@ var (
 func main() {
 	app := cli.NewApp()
 	app.Name = appName
+	app.Usage = "zkEVM Pool Manager component"
 	app.Version = zkevm.Version
 	flags := []cli.Flag{&configFileFlag}
 	app.Commands = []*cli.Command{
@@ -50,7 +51,7 @@ func main() {
 		{
 			Name:    "run",
 			Aliases: []string{},
-			Usage:   "Run zkevm-pool-manager",
+			Usage:   "Run zkEVM Pool manager",
 			Action:  start,
 			Flags:   append(flags, &migrationsFlag),
 		},
@@ -58,18 +59,21 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err)
+		println()
+		println("ERROR:", err.Error())
 		os.Exit(1)
 	}
 }
 
 func start(cliCtx *cli.Context) error {
+	// Load config file
 	c, err := config.Load(cliCtx, true)
 	if err != nil {
 		return err
 	}
-	setupLog(c.Log)
 
+	// Setup logger
+	log.Init(c.Log)
 	if c.Log.Environment == log.EnvironmentDevelopment {
 		zkevm.PrintVersion(os.Stdout)
 		log.Info("starting application...")
@@ -77,7 +81,7 @@ func start(cliCtx *cli.Context) error {
 		logVersion()
 	}
 
-	// Only runs migration if the flag is deactivated
+	// Run migrations if the 'no-migrations' flag is not set
 	if !cliCtx.Bool(config.FlagNoMigrations) {
 		log.Infof("running database migrations, host: %s:%s, db: %s, user: %s", c.DB.Host, c.DB.Port, c.DB.Name, c.DB.User)
 		runPoolMigrations(c.DB)
@@ -108,10 +112,6 @@ func start(cliCtx *cli.Context) error {
 func versionCmd(*cli.Context) error {
 	zkevm.PrintVersion(os.Stdout)
 	return nil
-}
-
-func setupLog(c log.Config) {
-	log.Init(c)
 }
 
 func runPoolMigrations(c db.Config) {

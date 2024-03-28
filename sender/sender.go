@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0xPolygonHermez/zkevm-pool-manager/db"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/log"
+	"github.com/0xPolygonHermez/zkevm-pool-manager/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jackc/pgx/v4"
 )
@@ -19,7 +19,7 @@ type Sender struct {
 }
 
 type sendRequest struct {
-	l2Tx db.L2Transaction
+	l2Tx types.L2Transaction
 	wg   *sync.WaitGroup
 	err  error
 }
@@ -45,7 +45,7 @@ func (s *Sender) Start() {
 	s.sendL2TransactionsFromPoolDB()
 }
 
-func (s *Sender) SendL2Transaction(l2Tx *db.L2Transaction) error {
+func (s *Sender) SendL2Transaction(l2Tx *types.L2Transaction) error {
 	request := &sendRequest{
 		l2Tx: *l2Tx,
 		wg:   new(sync.WaitGroup),
@@ -56,11 +56,15 @@ func (s *Sender) SendL2Transaction(l2Tx *db.L2Transaction) error {
 	request.wg.Wait()
 
 	if request.err != nil {
-		log.Infof("error sending tx %s to sequencer, error: %v", l2Tx.Hash, request.err)
-		s.poolDB.UpdateL2TransactionStatus(context.Background(), l2Tx.Hash, db.TxStatusInvalid, request.err.Error())
+		err := s.poolDB.UpdateL2TransactionStatus(context.Background(), l2Tx.Id, types.TxStatusInvalid, request.err.Error())
+		if err != nil {
+			log.Errorf("error updating tx %s status (%s) in the pool db, error: %v", l2Tx.Tag(), types.TxStatusInvalid, err)
+		}
 	} else {
-		log.Infof("tx %s sent to sequencer", l2Tx.Hash)
-		s.poolDB.UpdateL2TransactionStatus(context.Background(), l2Tx.Hash, db.TxStatusSent, "")
+		err := s.poolDB.UpdateL2TransactionStatus(context.Background(), l2Tx.Id, types.TxStatusSent, "")
+		if err != nil {
+			log.Errorf("error updating tx %s status (%s) in the pool db, error: %v", l2Tx.Tag(), types.TxStatusSent, err)
+		}
 		s.monitor.AddL2Transaction(l2Tx)
 	}
 
@@ -68,7 +72,7 @@ func (s *Sender) SendL2Transaction(l2Tx *db.L2Transaction) error {
 }
 
 func (s *Sender) enqueueSenderRequest(request *sendRequest) {
-	log.Debugf("send request for tx %s added to the queue channel", request.l2Tx.Hash)
+	log.Debugf("send request for tx %s added to the queue channel", request.l2Tx.Tag())
 	// Enqueue monitorRequest in the channel. We do in a go func to avoid blocking in case the channel buffer is full
 	go func() { s.requestChan <- request }()
 }
@@ -82,17 +86,16 @@ func (s *Sender) startSenderWorker(workerNum int) {
 	}
 
 	log.Debugf("sender-worker[%03d]: started", workerNum)
-
 	for sendRequest := range s.requestChan {
-		err := s.processSendRequest(sendRequest, seqClient, workerNum)
+		err := s.workerProcessRequest(sendRequest, seqClient, workerNum)
 
 		sendRequest.err = err
 		sendRequest.wg.Done()
 	}
 }
 
-func (s *Sender) processSendRequest(request *sendRequest, seqClient *ethclient.Client, workerNum int) error {
-	log.Debugf("sender-worker[%03d]: sending tx %s", workerNum, request.l2Tx.Hash)
+func (s *Sender) workerProcessRequest(request *sendRequest, seqClient *ethclient.Client, workerNum int) error {
+	log.Debugf("sender-worker[%03d]: sending tx %s", workerNum, request.l2Tx.Tag())
 
 	return seqClient.Client().CallContext(context.Background(), nil, "eth_sendRawTransaction", request.l2Tx.Encoded)
 }
@@ -106,14 +109,16 @@ func (s *Sender) checkL2TransactionsToResend() {
 			continue
 		}
 
-		for _, tx := range txs {
-			err := s.SendL2Transaction(tx)
+		if len(txs) > 0 {
+			log.Infof("resending txs to the sequencer")
+		}
+
+		for _, l2Tx := range txs {
+			err := s.SendL2Transaction(l2Tx)
 			if err != nil {
-				log.Errorf("error sending tx %s to sequencer, error: %v", tx.Hash, err)
-				s.poolDB.UpdateL2TransactionStatus(context.Background(), tx.Hash, db.TxStatusInvalid, err.Error())
+				log.Infof("resending tx %s to sequencer returns error: %v", l2Tx.Tag(), err)
 			} else {
-				log.Debugf("tx %s sent to sequencer", tx.Hash)
-				s.poolDB.UpdateL2TransactionStatus(context.Background(), tx.Hash, db.TxStatusSent, "")
+				log.Infof("tx %s resent to sequencer", l2Tx.Tag())
 			}
 		}
 
@@ -130,6 +135,11 @@ func (s *Sender) sendL2TransactionsFromPoolDB() {
 	}
 
 	for _, l2Tx := range l2Txs {
-		s.SendL2Transaction(l2Tx)
+		err := s.SendL2Transaction(l2Tx)
+		if err != nil {
+			log.Infof("sending tx %s to sequencer returns error: %v", l2Tx.Tag(), err)
+		} else {
+			log.Infof("tx %s sent to sequencer", l2Tx.Tag())
+		}
 	}
 }

@@ -46,17 +46,16 @@ func NewServer(cfg Config, poolDB *db.PoolDB, sender senderInterface) *Server {
 }
 
 // Start initializes pool-manager JSON-RPC server to listen for requests
-func (s *Server) Start() error {
+func (s *Server) Start() {
 	if s.httpServer != nil {
-		return fmt.Errorf("HTTP server already started")
+		log.Fatalf("HTTP server already started")
 	}
 
 	address := fmt.Sprintf("%s:%d", s.config.Host, s.config.Port)
 
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
-		log.Errorf("failed to create TCP listener, error: %v", err)
-		return err
+		log.Fatalf("failed to create TCP listener, error: %v", err)
 	}
 
 	mux := http.NewServeMux()
@@ -73,13 +72,10 @@ func (s *Server) Start() error {
 	log.Infof("HTTP server started at %s", address)
 	if err := s.httpServer.Serve(lis); err != nil {
 		if err == http.ErrServerClosed {
-			log.Infof("http server stopped")
-			return nil
+			log.Fatalf("HTTP server stopped")
 		}
-		log.Errorf("closed HTTP connection, error: %v", err)
-		return err
+		log.Fatalf("closed HTTP connection, error: %v", err)
 	}
-	return nil
 }
 
 // Stop shutdown the JSON-RPC server

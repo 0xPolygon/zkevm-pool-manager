@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0xPolygonHermez/zkevm-pool-manager/config/types"
-	"github.com/0xPolygonHermez/zkevm-pool-manager/db"
+	cfgTypes "github.com/0xPolygonHermez/zkevm-pool-manager/config/types"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/hex"
+	"github.com/0xPolygonHermez/zkevm-pool-manager/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
@@ -21,8 +21,8 @@ func NewMockConfig() Config {
 	return Config{
 		Host:                      "0.0.0.0",
 		Port:                      8123,
-		ReadTimeout:               types.NewDuration(time.Second * 60),
-		WriteTimeout:              types.NewDuration(time.Second * 60),
+		ReadTimeout:               cfgTypes.NewDuration(time.Second * 60),
+		WriteTimeout:              cfgTypes.NewDuration(time.Second * 60),
 		MaxRequestsPerIPAndSecond: 100,
 	}
 }
@@ -57,7 +57,7 @@ func TestSendRawTransaction(t *testing.T) {
 
 			},
 			SetupMocks: func() {
-				mockPoolDB.On("AddTx", context.Background(), mock.IsType(db.L2Transaction{})).Return(nil).Once()
+				mockPoolDB.On("AddTx", context.Background(), mock.IsType(types.L2Transaction{})).Return(nil).Once()
 			},
 			ExpectedError: nil,
 		},
@@ -73,7 +73,7 @@ func TestSendRawTransaction(t *testing.T) {
 				require.NoError(t, err)
 			},
 			SetupMocks: func() {
-				mockPoolDB.On("AddTx", context.Background(), mock.IsType(db.L2Transaction{})).Return(errorAddTx).Once()
+				mockPoolDB.On("AddTx", context.Background(), mock.IsType(types.L2Transaction{})).Return(errorAddTx).Once()
 			},
 			ExpectedError: NewServerErrorWithData(DefaultErrorCode, errorAddTx.Error(), nil),
 		},
