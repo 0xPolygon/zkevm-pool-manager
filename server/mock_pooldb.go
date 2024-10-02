@@ -5,7 +5,7 @@ package server
 import (
 	context "context"
 
-	db "github.com/0xPolygonHermez/zkevm-pool-manager/db"
+	types "github.com/0xPolygonHermez/zkevm-pool-manager/types"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -15,34 +15,44 @@ type poolDBMock struct {
 }
 
 // AddL2Transaction provides a mock function with given fields: ctx, tx
-func (_m *poolDBMock) AddL2Transaction(ctx context.Context, tx *db.L2Transaction) error {
+func (_m *poolDBMock) AddL2Transaction(ctx context.Context, tx *types.L2Transaction) (uint64, error) {
 	ret := _m.Called(ctx, tx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddL2Transaction")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *db.L2Transaction) error); ok {
+	var r0 uint64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *types.L2Transaction) (uint64, error)); ok {
+		return rf(ctx, tx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *types.L2Transaction) uint64); ok {
 		r0 = rf(ctx, tx)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(uint64)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, *types.L2Transaction) error); ok {
+		r1 = rf(ctx, tx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
-// UpdateL2TransactionStatus provides a mock function with given fields: ctx, txHash, newStatus, errorMsg
-func (_m *poolDBMock) UpdateL2TransactionStatus(ctx context.Context, txHash string, newStatus string, errorMsg string) error {
-	ret := _m.Called(ctx, txHash, newStatus, errorMsg)
+// UpdateL2TransactionStatus provides a mock function with given fields: ctx, id, newStatus, errorMsg
+func (_m *poolDBMock) UpdateL2TransactionStatus(ctx context.Context, id uint64, newStatus string, errorMsg string) error {
+	ret := _m.Called(ctx, id, newStatus, errorMsg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateL2TransactionStatus")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) error); ok {
-		r0 = rf(ctx, txHash, newStatus, errorMsg)
+	if rf, ok := ret.Get(0).(func(context.Context, uint64, string, string) error); ok {
+		r0 = rf(ctx, id, newStatus, errorMsg)
 	} else {
 		r0 = ret.Error(0)
 	}

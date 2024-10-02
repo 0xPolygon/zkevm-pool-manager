@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0xPolygonHermez/zkevm-pool-manager/db"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/log"
+	"github.com/0xPolygonHermez/zkevm-pool-manager/types"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -22,7 +22,7 @@ type Monitor struct {
 }
 
 type monitorRequest struct {
-	l2Tx      db.L2Transaction
+	l2Tx      types.L2Transaction
 	nextRetry time.Time
 }
 
@@ -48,7 +48,7 @@ func (m *Monitor) Start() {
 	m.monitorL2TransactionsFromPoolDB()
 }
 
-func (m *Monitor) AddL2Transaction(l2Tx *db.L2Transaction) {
+func (m *Monitor) AddL2Transaction(l2Tx *types.L2Transaction) {
 	request := &monitorRequest{
 		l2Tx: *l2Tx,
 	}
@@ -62,7 +62,7 @@ func (m *Monitor) AddL2Transaction(l2Tx *db.L2Transaction) {
 }
 
 func (m *Monitor) enqueueMonitorRequest(request *monitorRequest) {
-	log.Debugf("monitor request for tx %s added to the queue channel", request.l2Tx.Hash)
+	log.Debugf("monitor request for tx %s added to the queue channel", request.l2Tx.Tag(), request.l2Tx.Tag())
 	// Enqueue monitorRequest in the channel. We do in a go func to avoid blocking in case the channel buffer is full
 	go func() { m.requestChan <- request }()
 }
@@ -77,14 +77,12 @@ func (m *Monitor) startMonitorWorker(workerNum int) {
 
 	log.Debugf("monitor-worker[%03d]: started", workerNum)
 	for monitorRequest := range m.requestChan {
-		m.processMonitorRequest(monitorRequest, rpcClient, workerNum)
+		m.workerProcessRequest(monitorRequest, rpcClient, workerNum)
 	}
 }
 
-func (m *Monitor) scheduleRequestRetry(request *monitorRequest, workerNum int) {
+func (m *Monitor) scheduleRequestRetry(request *monitorRequest) {
 	request.nextRetry = time.Now().Add(m.cfg.RetryWaitInterval.Duration)
-	log.Debugf("monitor-worker[%03d]: scheduled retry monitor tx %s at %v", workerNum, request.l2Tx.Hash, request.nextRetry)
-
 	m.addRequestToRetryList(request)
 }
 
@@ -92,34 +90,34 @@ func (m *Monitor) addRequestToRetryList(request *monitorRequest) {
 	m.requestRetryList.add(request)
 
 	if m.requestRetryList.len() == 1 {
-		log.Debugf("monitor-worker[%03d]: signal monitor request retries")
+		log.Debugf("signal monitor request retries")
 		m.requestRetryCond.Signal()
 	}
 }
 
-func (m *Monitor) processMonitorRequest(request *monitorRequest, rpcClient *ethclient.Client, workerNum int) {
-	log.Infof("monitor-worker[%03d]: monitoring tx %s", workerNum, request.l2Tx.Hash)
+func (m *Monitor) workerProcessRequest(request *monitorRequest, rpcClient *ethclient.Client, workerNum int) {
+	log.Infof("monitor-worker[%03d]: monitoring tx %s", workerNum, request.l2Tx.Tag())
 
 	receipt, err := rpcClient.TransactionReceipt(context.Background(), common.HexToHash(request.l2Tx.Hash))
 	if err != nil {
 		if !errors.Is(err, ethereum.NotFound) {
-			log.Errorf("monitor-worker[%03d]: error getting receipt for tx %s, error: %v", workerNum, request.l2Tx.Hash, err)
+			log.Errorf("monitor-worker[%03d]: error getting receipt for tx %s, schedule retry, error: %v", workerNum, request.l2Tx.Tag, err)
 		} else {
-			log.Debugf("monitor-worker[%03d]: receipt for tx %s still not available, schedule retry", workerNum, request.l2Tx.Hash)
+			log.Debugf("monitor-worker[%03d]: receipt for tx %s still not available, schedule retry", workerNum, request.l2Tx.Tag)
 		}
-		m.scheduleRequestRetry(request, workerNum)
+		m.scheduleRequestRetry(request)
 	} else {
-		l2TxStatus := db.TxStatusConfirmed
+		l2TxStatus := types.TxStatusConfirmed
 		if receipt.Status == 0 {
-			l2TxStatus = db.TxStatusFailed
+			l2TxStatus = types.TxStatusFailed
 		}
 
-		err := m.poolDB.UpdateL2TransactionStatus(context.Background(), request.l2Tx.Hash, l2TxStatus, "")
+		err := m.poolDB.UpdateL2TransactionStatus(context.Background(), request.l2Tx.Id, l2TxStatus, "")
 		if err != nil {
-			log.Errorf("monitor-worker[%03d]: error updating status for tx %s, error: %v", workerNum, request.l2Tx.Hash, err)
-			m.scheduleRequestRetry(request, workerNum)
+			log.Errorf("monitor-worker[%03d]: error updating status for tx %s, schedule retry, error: %v", workerNum, request.l2Tx.Tag(), err)
+			m.scheduleRequestRetry(request)
 		} else {
-			log.Infof("monitor-worker[%03d]: receipt for tx %s received, status: %d", workerNum, request.l2Tx.Hash, receipt.Status)
+			log.Infof("monitor-worker[%03d]: receipt for tx %s received, status: %d", workerNum, request.l2Tx.Tag(), receipt.Status)
 			m.requestRetryList.delete(request)
 		}
 	}
@@ -132,11 +130,14 @@ func (m *Monitor) checkMonitorRequestRetries() {
 			request := m.requestRetryList.getByIndex(0)
 			// Check if tx has reached max lifetime
 			if request.l2Tx.ReceivedAt.Add(m.cfg.TxLifeTimeMax.Duration).Before(now) {
-				log.Debugf("monitor tx %s has expired, updating status", request.l2Tx.Hash)
-				m.poolDB.UpdateL2TransactionStatus(context.Background(), request.l2Tx.Hash, db.TxStatusExpired, "")
+				log.Debugf("monitor tx %s has expired, updating status", request.l2Tx.Tag())
+				err := m.poolDB.UpdateL2TransactionStatus(context.Background(), request.l2Tx.Id, types.TxStatusExpired, "")
+				if err != nil {
+					log.Errorf("error updating tx %s status (%s) in the pool db, error: %v", request.l2Tx.Tag(), types.TxStatusExpired, err)
+				}
 				m.requestRetryList.delete(request)
 			} else if request.nextRetry.Before(now) {
-				log.Debugf("retry monitor tx %s that was schedule to %v", request.l2Tx.Hash, request.nextRetry)
+				log.Debugf("retry monitor tx %s that was schedule to %v", request.l2Tx.Tag(), request.nextRetry)
 				m.requestRetryList.delete(request)
 				m.enqueueMonitorRequest(request)
 			} else {

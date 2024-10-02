@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/0xPolygonHermez/zkevm-pool-manager/hex"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/log"
@@ -18,11 +19,17 @@ func main() {
 	ctx := context.Background()
 
 	poolManagerURL := "http://localhost:8545"
-	privateKey := "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-	chainID := uint64(1234)
+	l2NodeURL := "http://localhost:8467"
+	privateKey := "0x26e86e45f6fc45ec6e2ecd128cec80fa1d1505e5507dcd2ae58c3130a7a97b48"
+	chainID := uint64(999999)
 
-	log.Infof("connecting to %s", poolManagerURL)
-	client, err := ethclient.Dial(poolManagerURL)
+	log.Infof("connecting to pool-manager %s", poolManagerURL)
+	poolmgrClient, err := ethclient.Dial(poolManagerURL)
+	chkErr(err)
+	log.Infof("connected")
+
+	log.Infof("connecting to L2 node %s", poolManagerURL)
+	l2NodeClient, err := ethclient.Dial(l2NodeURL)
 	chkErr(err)
 	log.Infof("connected")
 
@@ -32,25 +39,47 @@ func main() {
 	const receiverAddr = "0x617b3a3528F9cDd6630fd3301B9c8911F7Bf063D"
 
 	transferAmount := big.NewInt(1)
-	nonce := uint64(0)
 
+	nonce, err := l2NodeClient.NonceAt(ctx, auth.From, nil)
+	chkErr(err)
+
+	txs := []common.Hash{}
 	for i := 0; i < 1; i++ {
 		nonce := nonce + uint64(i)
 		to := common.HexToAddress(receiverAddr)
-		tx := ethTransfer(ctx, client, auth, to, transferAmount, &nonce)
+		tx := ethTransfer(ctx, poolmgrClient, auth, to, transferAmount, nonce)
 		rlp, err := tx.MarshalBinary()
 		chkErr(err)
 
-		log.Infof("tx sent: %s, rlp: %s", tx.Hash().Hex(), hex.EncodeToHex(rlp))
+		log.Infof("tx sent: %s, nonce: %d, rlp: %s", tx.Hash(), nonce, hex.EncodeToHex(rlp))
+
+		txs = append(txs, tx.Hash())
+	}
+
+	for _, txHash := range txs {
+		waitForReceipt(ctx, l2NodeClient, txHash)
 	}
 }
 
-func ethTransfer(ctx context.Context, client *ethclient.Client, auth *bind.TransactOpts, to common.Address, amount *big.Int, nonce *uint64) *types.Transaction {
+func waitForReceipt(ctx context.Context, client *ethclient.Client, txHash common.Hash) {
+	for {
+		// log.Infof("getting receipt for tx %s", txHash)
+		receipt, err := client.TransactionReceipt(ctx, txHash)
+		if err == nil {
+			log.Infof("receipt for tx %s received, status: %d", txHash, receipt.Status)
+			return
+		}
+		// log.Infof("receipt for tx %s still not available, error: %v", txHash, err)
+		time.Sleep(500 * time.Microsecond)
+	}
+}
 
-	gasPrice := new(big.Int).SetUint64(10)
-	gasLimit := uint64(100)
+func ethTransfer(ctx context.Context, client *ethclient.Client, auth *bind.TransactOpts, to common.Address, amount *big.Int, nonce uint64) *types.Transaction {
 
-	tx := types.NewTransaction(*nonce, to, amount, gasLimit, gasPrice, nil)
+	gasPrice := new(big.Int).SetUint64(1000000000)
+	gasLimit := uint64(2000000)
+
+	tx := types.NewTransaction(nonce, to, amount, gasLimit, gasPrice, nil)
 
 	signedTx, err := auth.Signer(auth.From, tx)
 	chkErr(err)
