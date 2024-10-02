@@ -44,7 +44,7 @@ func (e *monitorRequestList) delete(request *monitorRequest) bool {
 	if request, found := e.list[request.l2Tx.Hash]; found {
 		sLen := len(e.sorted)
 		i := sort.Search(sLen, func(i int) bool {
-			return e.isGreaterOrEqualThan(request, e.list[e.sorted[i].l2Tx.Hash])
+			return e.isGreaterOrEqualThan(e.list[e.sorted[i].l2Tx.Hash], request)
 		})
 
 		// i is the index of the first tx that has equal (or lower) nextRetry time than the request. From here we need to go down in the list
@@ -58,7 +58,7 @@ func (e *monitorRequestList) delete(request *monitorRequest) bool {
 
 			if e.sorted[i].nextRetry != request.nextRetry {
 				// we have a request with different (lower) nextRetry time than the request we are looking for, therefore we haven't found the request
-				log.Warnf("error deleting monitor request %s from monitoreRequestList, not found in the list of requests with same nextRetry time: %s", request.l2Tx.Hash)
+				log.Warnf("error deleting monitor request %s from monitoreRequestList, not found in the list of requests with same nextRetry time: %v", request.l2Tx.Hash, request.nextRetry)
 				return false
 			}
 
@@ -114,7 +114,7 @@ func (e *monitorRequestList) Print() {
 // addSort adds the monitor request to the list in a sorted way
 func (e *monitorRequestList) addSort(request *monitorRequest) {
 	i := sort.Search(len(e.sorted), func(i int) bool {
-		return e.isGreaterThan(request, e.list[e.sorted[i].l2Tx.Hash])
+		return e.isGreaterThan(e.list[e.sorted[i].l2Tx.Hash], request)
 	})
 
 	e.sorted = append(e.sorted, nil)
