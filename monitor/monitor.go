@@ -101,9 +101,9 @@ func (m *Monitor) workerProcessRequest(request *monitorRequest, rpcClient *ethcl
 	receipt, err := rpcClient.TransactionReceipt(context.Background(), common.HexToHash(request.l2Tx.Hash))
 	if err != nil {
 		if !errors.Is(err, ethereum.NotFound) {
-			log.Errorf("monitor-worker[%03d]: error getting receipt for tx %s, schedule retry, error: %v", workerNum, request.l2Tx.Tag, err)
+			log.Errorf("monitor-worker[%03d]: error getting receipt for tx %s, schedule retry, error: %v", workerNum, request.l2Tx.Tag(), err)
 		} else {
-			log.Debugf("monitor-worker[%03d]: receipt for tx %s still not available, schedule retry", workerNum, request.l2Tx.Tag)
+			log.Debugf("monitor-worker[%03d]: receipt for tx %s still not available, schedule retry", workerNum, request.l2Tx.Tag())
 		}
 		m.scheduleRequestRetry(request)
 	} else {
