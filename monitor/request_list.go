@@ -125,12 +125,12 @@ func (e *monitorRequestList) addSort(request *monitorRequest) {
 
 // isGreaterThan returns true if the request1 has greater nextRetry time than request2
 func (e *monitorRequestList) isGreaterThan(request1 *monitorRequest, request2 *monitorRequest) bool {
-	return request1.nextRetry.After(request2.nextRetry)
+	return request1.nextRetry.UnixMilli() > request2.nextRetry.UnixMilli()
 }
 
 // isGreaterOrEqualThan returns true if the request1 has greater or equal nextRetry time than request2
 func (e *monitorRequestList) isGreaterOrEqualThan(request1 *monitorRequest, request2 *monitorRequest) bool {
-	return (request1.nextRetry.After(request2.nextRetry)) || (request1.nextRetry == request2.nextRetry)
+	return request1.nextRetry.UnixMilli() >= request2.nextRetry.UnixMilli()
 }
 
 // GetSorted returns the sorted list of monitor requests
