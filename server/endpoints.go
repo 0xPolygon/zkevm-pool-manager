@@ -51,7 +51,6 @@ func (e *Endpoints) SendRawTransaction(httpRequest *http.Request, input string) 
 	fromAddress, err := GetSender(*tx)
 	if err != nil {
 		log.Warnf("error getting from address for tx %s, error: %v", tx.Hash(), err)
-		fromAddress = common.Address{}
 	}
 
 	log.Debugf("adding tx %s to the pool", tx.Hash())
