@@ -50,8 +50,7 @@ func (e *Endpoints) SendRawTransaction(httpRequest *http.Request, input string) 
 	// Get from address
 	fromAddress, err := GetSender(*tx)
 	if err != nil {
-		log.Errorf("error getting from address for tx %s, error: %v", tx.Hash(), err)
-		return nil, NewServerErrorWithData(ParserErrorCode, "error getting from address", nil)
+		log.Warnf("error getting from address for tx %s, error: %v", tx.Hash(), err)
 	}
 
 	log.Debugf("adding tx %s to the pool", tx.Hash())
