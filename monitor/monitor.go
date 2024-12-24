@@ -155,12 +155,25 @@ func (m *Monitor) checkMonitorRequestRetries() {
 }
 
 func (m *Monitor) monitorL2TransactionsFromPoolDB() {
-	l2Txs, err := m.poolDB.GetL2TransactionsToMonitor(context.Background())
-	if err != nil {
-		log.Errorf("error when getting txs to monitor from the pool database, error: %v", err)
+	for page := 0; ; page++ {
+		l2Txs, err := m.poolDB.GetL2TransactionsToMonitor(context.Background(), page)
+		if err != nil {
+			log.Errorf("error when getting txs to monitor from the pool database, error: %v", err)
+			return
+		}
+		log.Infof("load %d txs from the pool database", len(l2Txs))
+		if len(l2Txs) == 0 {
+			log.Infof("no txs to monitor from the pool database")
+			return
+		}
+
+		for _, l2Tx := range l2Txs {
+			m.AddL2Transaction(l2Tx)
+		}
 	}
 
-	for _, l2Tx := range l2Txs {
-		m.AddL2Transaction(l2Tx)
-	}
+}
+
+func (m *Monitor) Summary() {
+	log.Infof("Summary monitor: request retry:%v", m.requestRetryList.len())
 }

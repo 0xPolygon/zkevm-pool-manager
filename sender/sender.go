@@ -129,17 +129,23 @@ func (s *Sender) checkL2TransactionsToResend() {
 }
 
 func (s *Sender) sendL2TransactionsFromPoolDB() {
-	l2Txs, err := s.poolDB.GetL2TransactionsToSend(context.Background())
-	if err != nil {
-		log.Errorf("error when getting txs to send from the pool database, error: %v", err)
-	}
-
-	for _, l2Tx := range l2Txs {
-		err := s.SendL2Transaction(l2Tx)
+	for page := 0; ; page++ {
+		l2Txs, err := s.poolDB.GetL2TransactionsToSend(context.Background(), page)
 		if err != nil {
-			log.Infof("sending tx %s to sequencer returns error: %v", l2Tx.Tag(), err)
-		} else {
-			log.Infof("tx %s sent to sequencer", l2Tx.Tag())
+			log.Errorf("error when getting txs to send from the pool database, error: %v", err)
+			return
+		}
+		log.Infof("sending txs to the sequencer, len: %d", len(l2Txs))
+		if len(l2Txs) == 0 {
+			return
+		}
+		for _, l2Tx := range l2Txs {
+			err := s.SendL2Transaction(l2Tx)
+			if err != nil {
+				log.Infof("sending tx %s to sequencer returns error: %v", l2Tx.Tag(), err)
+			} else {
+				log.Infof("tx %s sent to sequencer", l2Tx.Tag())
+			}
 		}
 	}
 }
