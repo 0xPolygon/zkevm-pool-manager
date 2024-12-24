@@ -4,13 +4,15 @@ import (
 	"context"
 	"time"
 
+	"github.com/0xPolygonHermez/zkevm-pool-manager/log"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/types"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // PoolDB represent a postgres pool database to store transactions
 type PoolDB struct {
-	db *pgxpool.Pool
+	db         *pgxpool.Pool
+	queryLimit int
 }
 
 // NewPostgresPoolStorage creates and initializes an instance of PostgresPoolStorage
@@ -20,7 +22,7 @@ func NewPoolDB(cfg Config) (*PoolDB, error) {
 		return nil, err
 	}
 
-	return &PoolDB{db: poolDB}, nil
+	return &PoolDB{db: poolDB, queryLimit: cfg.QueryLimit}, nil
 }
 
 // AddTx adds a L2 transaction to the pool
@@ -42,10 +44,11 @@ func (p *PoolDB) AddL2Transaction(ctx context.Context, tx *types.L2Transaction) 
 	return id, nil
 }
 
-func (p *PoolDB) GetL2TransactionsByStatus(ctx context.Context, status string) ([]*types.L2Transaction, error) {
-	const resendTxsSQL = "SELECT id, hash, received_at, from_address, gas_price, nonce, status, ip, encoded, decoded FROM pool.transaction WHERE status = $1"
-
-	rows, err := p.db.Query(ctx, resendTxsSQL, status)
+func (p *PoolDB) GetL2TransactionsByStatusPaginated(ctx context.Context, status string, page int) ([]*types.L2Transaction, error) {
+	offset := page * p.queryLimit
+	const queryTxsSQL = "SELECT id, hash, received_at, from_address, gas_price, nonce, status, ip, encoded, decoded " +
+		"FROM pool.transaction WHERE status = $1 LIMIT $2 OFFSET $3;"
+	rows, err := p.db.Query(ctx, queryTxsSQL, status, p.queryLimit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -63,20 +66,20 @@ func (p *PoolDB) GetL2TransactionsByStatus(ctx context.Context, status string) (
 
 		txs = append(txs, tx)
 	}
-
+	log.Infof("select txs:%v, status %s, page:%v, limit:%v, offset:%v", len(txs), status, page, p.queryLimit, offset)
 	return txs, nil
 }
 
 func (p *PoolDB) GetL2TransactionsToResend(ctx context.Context) ([]*types.L2Transaction, error) {
-	return p.GetL2TransactionsByStatus(ctx, types.TxStatusResend)
+	return p.GetL2TransactionsByStatusPaginated(ctx, types.TxStatusResend, 0)
 }
 
-func (p *PoolDB) GetL2TransactionsToMonitor(ctx context.Context) ([]*types.L2Transaction, error) {
-	return p.GetL2TransactionsByStatus(ctx, types.TxStatusSent)
+func (p *PoolDB) GetL2TransactionsToMonitor(ctx context.Context, page int) ([]*types.L2Transaction, error) {
+	return p.GetL2TransactionsByStatusPaginated(ctx, types.TxStatusSent, page)
 }
 
-func (p *PoolDB) GetL2TransactionsToSend(ctx context.Context) ([]*types.L2Transaction, error) {
-	return p.GetL2TransactionsByStatus(ctx, types.TxStatusPending)
+func (p *PoolDB) GetL2TransactionsToSend(ctx context.Context, page int) ([]*types.L2Transaction, error) {
+	return p.GetL2TransactionsByStatusPaginated(ctx, types.TxStatusPending, page)
 }
 
 func (p *PoolDB) UpdateL2TransactionStatus(ctx context.Context, id uint64, newStatus string, errorMsg string) error {

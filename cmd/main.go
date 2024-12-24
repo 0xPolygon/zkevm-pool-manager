@@ -3,18 +3,24 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
+	"time"
 
 	"github.com/0xPolygonHermez/zkevm-data-streamer"
 	version "github.com/0xPolygonHermez/zkevm-pool-manager"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/config"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/db"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/log"
+	"github.com/0xPolygonHermez/zkevm-pool-manager/metrics"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/monitor"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/sender"
 	server "github.com/0xPolygonHermez/zkevm-pool-manager/server"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli/v2"
 )
 
@@ -104,6 +110,27 @@ func start(cliCtx *cli.Context) error {
 	server := server.NewServer(c.Server, poolDB, sender)
 	go server.Start()
 
+	if c.Metrics.Enabled {
+		go startMetricsHttpServer(c.Metrics)
+	}
+
+	if c.Metrics.ProfilingEnabled {
+		go startProfilingHttpServer(c.Metrics)
+	}
+
+	go func() {
+		for {
+			select {
+			case <-cliCtx.Done():
+				log.Infof("Exiting loop...")
+				return
+			default:
+				time.Sleep(30 * time.Second)
+				monitor.Summary()
+			}
+		}
+	}()
+
 	waitSignal(cancelFuncs)
 
 	return nil
@@ -156,4 +183,61 @@ func logVersion() {
 		"Built", version.BuildDate,
 		"OS/Arch", fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
 	)
+}
+
+func startProfilingHttpServer(c metrics.Config) {
+	const two = 2
+	mux := http.NewServeMux()
+	address := fmt.Sprintf("%s:%d", c.ProfilingHost, c.ProfilingPort)
+	lis, err := net.Listen("tcp", address)
+	if err != nil {
+		log.Errorf("failed to create tcp listener for profiling: %v", err)
+		return
+	}
+	mux.HandleFunc(metrics.ProfilingIndexEndpoint, pprof.Index)
+	mux.HandleFunc(metrics.ProfileEndpoint, pprof.Profile)
+	mux.HandleFunc(metrics.ProfilingCmdEndpoint, pprof.Cmdline)
+	mux.HandleFunc(metrics.ProfilingSymbolEndpoint, pprof.Symbol)
+	mux.HandleFunc(metrics.ProfilingTraceEndpoint, pprof.Trace)
+	profilingServer := &http.Server{
+		Handler:           mux,
+		ReadHeaderTimeout: two * time.Minute,
+		ReadTimeout:       two * time.Minute,
+	}
+	log.Infof("profiling server listening on port %d", c.ProfilingPort)
+	if err := profilingServer.Serve(lis); err != nil {
+		if err == http.ErrServerClosed {
+			log.Warnf("http server for profiling stopped")
+			return
+		}
+		log.Errorf("closed http connection for profiling server: %v", err)
+		return
+	}
+}
+
+func startMetricsHttpServer(c metrics.Config) {
+	const ten = 10
+	mux := http.NewServeMux()
+	address := fmt.Sprintf("%s:%d", c.Host, c.Port)
+	lis, err := net.Listen("tcp", address)
+	if err != nil {
+		log.Errorf("failed to create tcp listener for metrics: %v", err)
+		return
+	}
+	mux.Handle(metrics.Endpoint, promhttp.Handler())
+
+	metricsServer := &http.Server{
+		Handler:           mux,
+		ReadHeaderTimeout: ten * time.Second,
+		ReadTimeout:       ten * time.Second,
+	}
+	log.Infof("metrics server listening on port %d", c.Port)
+	if err := metricsServer.Serve(lis); err != nil {
+		if err == http.ErrServerClosed {
+			log.Warnf("http server for metrics stopped")
+			return
+		}
+		log.Errorf("closed http connection for metrics server: %v", err)
+		return
+	}
 }

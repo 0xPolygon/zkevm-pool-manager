@@ -19,3 +19,5 @@ CREATE TABLE pool.transaction
     decoded         jsonb,
     error           VARCHAR
 );
+
+CREATE INDEX IF NOT EXISTS idx_transaction_status ON pool.transaction (status);
