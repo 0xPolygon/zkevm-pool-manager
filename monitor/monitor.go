@@ -98,7 +98,10 @@ func (m *Monitor) addRequestToRetryList(request *monitorRequest) {
 func (m *Monitor) workerProcessRequest(request *monitorRequest, rpcClient *ethclient.Client, workerNum int) {
 	log.Infof("monitor-worker[%03d]: monitoring tx %s", workerNum, request.l2Tx.Tag())
 
-	receipt, err := rpcClient.TransactionReceipt(context.Background(), common.HexToHash(request.l2Tx.Hash))
+	ctx, cancel := context.WithTimeout(context.Background(), m.cfg.RPCReadTimeout.Duration)
+	defer cancel()
+	receipt, err := rpcClient.TransactionReceipt(ctx, common.HexToHash(request.l2Tx.Hash))
+	log.Debugf("monitor-worker[%03d]: monitoring tx, get receipt ok %s, err:%v", workerNum, request.l2Tx.Tag(), err)
 	if err != nil {
 		if !errors.Is(err, ethereum.NotFound) {
 			log.Errorf("monitor-worker[%03d]: error getting receipt for tx %s, schedule retry, error: %v", workerNum, request.l2Tx.Tag(), err)
@@ -146,6 +149,7 @@ func (m *Monitor) checkMonitorRequestRetries() {
 			}
 		} else {
 			// wait for new monitorRequest to retry
+			log.Debugf("waiting processing monitor txs requests retries")
 			m.requestRetryCond.L.Lock()
 			m.requestRetryCond.Wait()
 			m.requestRetryCond.L.Unlock()

@@ -97,7 +97,9 @@ func (s *Sender) startSenderWorker(workerNum int) {
 func (s *Sender) workerProcessRequest(request *sendRequest, seqClient *ethclient.Client, workerNum int) error {
 	log.Debugf("sender-worker[%03d]: sending tx %s", workerNum, request.l2Tx.Tag())
 
-	return seqClient.Client().CallContext(context.Background(), nil, "eth_sendRawTransaction", request.l2Tx.Encoded)
+	ctx, cancel := context.WithTimeout(context.Background(), s.cfg.RPCReadTimeout.Duration)
+	defer cancel()
+	return seqClient.Client().CallContext(ctx, nil, "eth_sendRawTransaction", request.l2Tx.Encoded)
 }
 
 func (s *Sender) checkL2TransactionsToResend() {
