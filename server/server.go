@@ -95,6 +95,7 @@ func (s *Server) Stop() error {
 }
 
 func (s *Server) handle(w http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
