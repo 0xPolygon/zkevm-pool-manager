@@ -66,7 +66,7 @@ func (p *PoolDB) GetL2TransactionsByStatusPaginated(ctx context.Context, status 
 
 		txs = append(txs, tx)
 	}
-	log.Infof("select txs:%v, status %s, page:%v, limit:%v, offset:%v", len(txs), status, page, p.queryLimit, offset)
+	log.Debugf("select txs:%v, status %s, page:%v, limit:%v, offset:%v", len(txs), status, page, p.queryLimit, offset)
 	return txs, nil
 }
 
