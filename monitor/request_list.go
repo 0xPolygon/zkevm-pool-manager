@@ -10,7 +10,7 @@ import (
 
 // monitorRequestList represents a list of monitorRequest indexed by l2Tx.Hash but sorted by nextRetry
 type monitorRequestList struct {
-	list   map[string]*monitorRequest
+	list   map[uint64]*monitorRequest
 	sorted []*monitorRequest
 	mutex  sync.Mutex
 }
@@ -18,7 +18,7 @@ type monitorRequestList struct {
 // newMonitorRequestList creates and init an txSortedList
 func newMonitorRequestList() *monitorRequestList {
 	return &monitorRequestList{
-		list:   make(map[string]*monitorRequest),
+		list:   make(map[uint64]*monitorRequest),
 		sorted: []*monitorRequest{},
 	}
 }
@@ -28,8 +28,8 @@ func (e *monitorRequestList) add(request *monitorRequest) bool {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	if _, found := e.list[request.l2Tx.Hash]; !found {
-		e.list[request.l2Tx.Hash] = request
+	if _, found := e.list[request.l2Tx.Id]; !found {
+		e.list[request.l2Tx.Id] = request
 		e.addSort(request)
 		return true
 	}
@@ -41,10 +41,10 @@ func (e *monitorRequestList) delete(request *monitorRequest) bool {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	if request, found := e.list[request.l2Tx.Hash]; found {
+	if request, found := e.list[request.l2Tx.Id]; found {
 		sLen := len(e.sorted)
 		i := sort.Search(sLen, func(i int) bool {
-			return e.isGreaterOrEqualThan(e.list[e.sorted[i].l2Tx.Hash], request)
+			return e.isGreaterOrEqualThan(e.list[e.sorted[i].l2Tx.Id], request)
 		})
 
 		// i is the index of the first tx that has equal (or lower) nextRetry time than the request. From here we need to go down in the list
@@ -69,7 +69,7 @@ func (e *monitorRequestList) delete(request *monitorRequest) bool {
 			i = i + 1
 		}
 
-		delete(e.list, request.l2Tx.Hash)
+		delete(e.list, request.l2Tx.Id)
 
 		copy(e.sorted[i:], e.sorted[i+1:])
 		e.sorted[sLen-1] = nil
@@ -114,7 +114,7 @@ func (e *monitorRequestList) Print() {
 // addSort adds the monitor request to the list in a sorted way
 func (e *monitorRequestList) addSort(request *monitorRequest) {
 	i := sort.Search(len(e.sorted), func(i int) bool {
-		return e.isGreaterThan(e.list[e.sorted[i].l2Tx.Hash], request)
+		return e.isGreaterThan(e.list[e.sorted[i].l2Tx.Id], request)
 	})
 
 	e.sorted = append(e.sorted, nil)
