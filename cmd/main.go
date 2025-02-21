@@ -22,6 +22,7 @@ import (
 	server "github.com/0xPolygonHermez/zkevm-pool-manager/server"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli/v2"
+	"gitlab.okg.com/okcoin-commons/ok-kms-go-client/kms"
 )
 
 const appName = "zkevm-pool-manager"
@@ -77,6 +78,16 @@ func start(cliCtx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	if err := kms.Init(); err != nil {
+		log.Fatalf("failed to init KMS: %v", err)
+	}
+	realPass, err := kms.GetAwsSecretValue("_testnet2_plmgr_db_pwd")
+	if err != nil {
+		// Decide whether to exit immediately based on your needs
+		log.Fatalf("failed to fetch DB pass from KMS: %v", err)
+	}
+	c.DB.Password = realPass
 
 	// Setup logger
 	log.Init(c.Log)
