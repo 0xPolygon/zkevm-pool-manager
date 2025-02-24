@@ -51,7 +51,9 @@ func getDBPassword(dbPassword string) (string, error) {
 			return "", fmt.Errorf("failed to init KMS: %w", err)
 		}
 		secretKey := strings.TrimPrefix(dbPassword, encryptedPrefix)
+		fmt.Println("secretKey", secretKey)
 		realPass, err := kms.GetAwsSecretValue(secretKey)
+		fmt.Println("realPass", realPass)
 		if err != nil {
 			return "", fmt.Errorf("failed to fetch DB pass from KMS: %w", err)
 		}

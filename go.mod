@@ -109,6 +109,7 @@ require (
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/holiman/uint256 v1.2.4 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a // indirect
+	gitlab.okg.com/okcoin-commons/ok-kms-go-client v1.0.0 // indirect
 )
 
 require (
@@ -117,4 +118,4 @@ require (
 // gitlab.okg.com/okcoin-commons/ok-kms-go-client v1.0.0
 )
 
-// replace github.com/okx/mock_kms => gitlab.okg.com/okcoin-commons/ok-kms-go-client v1.0.0
+replace github.com/okx/mock_kms => gitlab.okg.com/okcoin-commons/ok-kms-go-client v1.0.0
