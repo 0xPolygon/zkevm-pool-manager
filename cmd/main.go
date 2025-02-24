@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-data-streamer"
@@ -83,13 +84,15 @@ func start(cliCtx *cli.Context) error {
 	if err := kms.Init(); err != nil {
 		log.Fatalf("failed to init KMS: %v", err)
 	}
-	realPass, err := kms.GetAwsSecretValue("_testnet2_plmgr_db_pwd")
-	if err != nil {
-		// Decide whether to exit immediately based on your needs
-		log.Fatalf("failed to fetch DB pass from KMS: %v", err)
+	if strings.HasPrefix(c.DB.Password, "{encrypt}") {
+		secretKey := strings.TrimPrefix(c.DB.Password, "{encrypt}")
+		realPass, err := kms.GetAwsSecretValue(secretKey)
+		if err != nil {
+			// Decide whether to exit immediately based on your needs
+			log.Fatalf("failed to fetch DB pass from KMS: %v", err)
+		}
+		c.DB.Password = realPass
 	}
-	c.DB.Password = realPass
-
 	// Setup logger
 	log.Init(c.Log)
 	if c.Log.Environment == log.EnvironmentDevelopment {
