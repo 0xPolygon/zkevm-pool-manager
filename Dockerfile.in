@@ -1,0 +1,28 @@
+FROM online-registry.cn-hongkong.cr.aliyuncs.com/okbase/golang:1.21.0-okg1 AS build
+# INSTALL DEPENDENCIES
+COPY go.mod go.sum /src/
+
+# Add replace directive to go.mod
+# RUN echo 'replace github.com/okx/mock_kms => gitlab.okg.com/okcoin-commons/ok-kms-go-client v1.0.0' >> /src/go.mod
+
+RUN cd /src/ && go mod edit -replace=github.com/okx/mock_kms=gitlab.okg.com/okcoin-commons/ok-kms-go-client@v1.0.0
+
+# Install dependencies
+RUN cd /src/ && go mod tidy && go mod download && go mod verify
+
+RUN go install gitlab.okg.com/okcoin-commons/ok-kms-go-client@v1.0.0
+
+RUN cd /src/ && cat go.mod
+
+RUN cd /src && go mod download
+# BUILD BINARY
+COPY . /src
+RUN cd /src/db && packr2
+RUN cd /src && make build
+# CONTAINER FOR RUNNING BINARY
+FROM online-registry.cn-hongkong.cr.aliyuncs.com/okbase/alpine:3.18.3
+COPY --from=build /src/dist/zkevm-pool-manager /app/xlayer-pool-manager
+COPY --from=build /src/test/config/test.poolmanager.toml /app/poolmanager.toml
+RUN apk update && apk add postgresql15-client jq curl
+EXPOSE 8123
+CMD ["/bin/sh", "-c", "/app/xlayer-pool-manager run"]
