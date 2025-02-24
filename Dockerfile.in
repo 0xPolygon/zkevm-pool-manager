@@ -18,6 +18,7 @@ RUN cd /src && go mod download
 # BUILD BINARY
 COPY . /src
 RUN cd /src/db && packr2
+RUN go env -w GOPRIVATE=gitlab.okg.com && git config --global url."ssh://git@gitlab.okg.com".insteadOf "https://gitlab.okg.com" && git config --global url."git@gitlab.okg.com".insteadOf "https://gitlab.okg.com"
 RUN cd /src && make build
 # CONTAINER FOR RUNNING BINARY
 FROM online-registry.cn-hongkong.cr.aliyuncs.com/okbase/alpine:3.18.3
