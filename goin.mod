@@ -127,8 +127,9 @@ require (
 
 require (
 	github.com/prometheus/client_golang v1.18.0
-	// github.com/okx/mock_kms v0.0.0-20250221065835-3efe50d845d1
-	gitlab.okg.com/okcoin-commons/ok-kms-go-client v1.0.0
+	github.com/okx/mock_kms v0.0.0-20250221065835-3efe50d845d1
+	//gitlab.okg.com/okcoin-commons/ok-kms-go-client v1.0.0
 )
 
-replace gitlab.okg.com/okcoin-commons/ok-kms-go-client => github.com/okx/mock_kms v0.0.0-20250221065835-3efe50d845d1
+replace github.com/okx/mock_kms => gitlab.okg.com/okcoin-commons/ok-kms-go-client v1.0.0
+
