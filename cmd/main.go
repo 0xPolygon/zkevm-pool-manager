@@ -28,6 +28,7 @@ import (
 )
 
 const appName = "zkevm-pool-manager"
+const encryptedPrefix = "{encrypt}"
 
 var (
 	configFileFlag = cli.StringFlag{
@@ -43,6 +44,21 @@ var (
 		Required: false,
 	}
 )
+
+func getDBPassword(dbPassword string) (string, error) {
+	if strings.HasPrefix(dbPassword, encryptedPrefix) {
+		if err := kms.Init(); err != nil {
+			return "", fmt.Errorf("failed to init KMS: %w", err)
+		}
+		secretKey := strings.TrimPrefix(dbPassword, encryptedPrefix)
+		realPass, err := kms.GetAwsSecretValue(secretKey)
+		if err != nil {
+			return "", fmt.Errorf("failed to fetch DB pass from KMS: %w", err)
+		}
+		return realPass, nil
+	}
+	return dbPassword, nil // Return original password if not encrypted
+}
 
 func main() {
 	app := cli.NewApp()
@@ -81,18 +97,11 @@ func start(cliCtx *cli.Context) error {
 		return err
 	}
 
-	if err := kms.Init(); err != nil {
-		log.Fatalf("failed to init KMS: %v", err)
+	c.DB.Password, err = getDBPassword(c.DB.Password)
+	if err != nil {
+		log.Fatal(err)
 	}
-	if strings.HasPrefix(c.DB.Password, "{encrypt}") {
-		secretKey := strings.TrimPrefix(c.DB.Password, "{encrypt}")
-		realPass, err := kms.GetAwsSecretValue(secretKey)
-		if err != nil {
-			// Decide whether to exit immediately based on your needs
-			log.Fatalf("failed to fetch DB pass from KMS: %v", err)
-		}
-		c.DB.Password = realPass
-	}
+
 	// Setup logger
 	log.Init(c.Log)
 	if c.Log.Environment == log.EnvironmentDevelopment {
