@@ -1,7 +1,7 @@
 FROM online-registry.cn-hongkong.cr.aliyuncs.com/okbase/golang:1.21.0-okg1 AS build
 # INSTALL DEPENDENCIES
 COPY go.mod go.sum /src/
-
+RUN go env -w GOPRIVATE=gitlab.okg.com && git config --global url."ssh://git@gitlab.okg.com".insteadOf "https://gitlab.okg.com" && git config --global url."git@gitlab.okg.com".insteadOf "https://gitlab.okg.com"
 # Add replace directive to go.mod
 # RUN echo 'replace github.com/okx/mock_kms => gitlab.okg.com/okcoin-commons/ok-kms-go-client v1.0.0' >> /src/go.mod
 
@@ -18,7 +18,7 @@ RUN cd /src && go mod download
 # BUILD BINARY
 COPY . /src
 RUN cd /src/db && packr2
-RUN go env -w GOPRIVATE=gitlab.okg.com && git config --global url."ssh://git@gitlab.okg.com".insteadOf "https://gitlab.okg.com" && git config --global url."git@gitlab.okg.com".insteadOf "https://gitlab.okg.com"
+
 RUN cd /src && make build
 # CONTAINER FOR RUNNING BINARY
 FROM online-registry.cn-hongkong.cr.aliyuncs.com/okbase/alpine:3.18.3
