@@ -117,4 +117,4 @@ require (
 	gitlab.okg.com/okcoin-commons/ok-kms-go-client v1.0.0
 )
 
-replace gitlab.okg.com/okcoin-commons/ok-kms-go-client => github.com/okx/mock_kms v0.0.0-20250225063213-02716c0dfb0d
+replace gitlab.okg.com/okcoin-commons/ok-kms-go-client => github.com/okx/mock_kms v0.2.0
