@@ -21,9 +21,9 @@ import (
 	"github.com/0xPolygonHermez/zkevm-pool-manager/monitor"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/sender"
 	server "github.com/0xPolygonHermez/zkevm-pool-manager/server"
-	kms "github.com/okx/mock_kms"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli/v2"
+	kms "gitlab.okg.com/okcoin-commons/ok-kms-go-client/kms"
 	// "gitlab.okg.com/okcoin-commons/ok-kms-go-client/kms"
 )
 

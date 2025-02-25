@@ -1,6 +1,6 @@
 module github.com/0xPolygonHermez/zkevm-pool-manager
 
-go 1.23.3
+go 1.21
 
 require (
 	github.com/0xPolygonHermez/zkevm-data-streamer v0.1.19
@@ -112,8 +112,9 @@ require (
 )
 
 require (
-	github.com/okx/mock_kms v0.0.0-20250221105605-1cf3e45d0e6c
+	// github.com/okx/mock_kms v0.0.0-20250225034357-a3fb31a4f8e4
 	github.com/prometheus/client_golang v1.18.0
-// gitlab.okg.com/okcoin-commons/ok-kms-go-client v1.0.0
+	gitlab.okg.com/okcoin-commons/ok-kms-go-client v1.0.0
 )
 
+replace gitlab.okg.com/okcoin-commons/ok-kms-go-client => github.com/okx/mock_kms v0.0.0-20250225053714-2ef709d14076
