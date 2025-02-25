@@ -1,0 +1,6 @@
+go env -w GOPRIVATE=gitlab.okg.com && git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.okg.com/".insteadOf https://gitlab.okg.com/
+go mod edit -dropreplace gitlab.okg.com/okcoin-commons/ok-kms-go-client
+go mod tidy && go mod download && go mod verify
+#go install gitlab.okg.com/okcoin-commons/ok-kms-go-client@v1.0.0
+
+echo "finish replace..."
