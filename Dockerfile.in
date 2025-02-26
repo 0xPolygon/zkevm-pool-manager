@@ -1,18 +1,7 @@
-FROM online-registry.cn-hongkong.cr.aliyuncs.com/okbase/golang:1.21.0-okg1 AS build
-# INSTALL DEPENDENCIES
-COPY go.mod go.sum /src/
-
-RUN cd /src && go mod download
-# BUILD BINARY
-COPY . /src
-RUN cd /src/db && packr2
-
-RUN cd /src && make build
-# CONTAINER FOR RUNNING BINARY
 FROM online-registry.cn-hongkong.cr.aliyuncs.com/okbase/alpine:3.18.3
 RUN mkdir -p /workspace
-COPY --from=build /src/dist/zkevm-pool-manager /app/xlayer-pool-manager
-COPY --from=build /src/test/config/test.poolmanager.toml /app/poolmanager.toml
+COPY ./dist/zkevm-pool-manager /app/xlayer-pool-manager
+COPY ./test/config/test.poolmanager.toml /app/poolmanager.toml
 RUN apk update && apk add postgresql15-client jq curl
 EXPOSE 8123
 CMD ["/bin/sh", "-c", "/app/xlayer-pool-manager run"]

@@ -46,7 +46,9 @@ var (
 )
 
 func getDBPassword(dbPassword string) (string, error) {
+	fmt.Println("start getDBPassword")
 	if strings.HasPrefix(dbPassword, encryptedPrefix) {
+		fmt.Println("dbPassword has encryptedPrefix")
 		if err := kms.Init(); err != nil {
 			return "", fmt.Errorf("failed to init KMS: %w", err)
 		}
@@ -99,6 +101,7 @@ func start(cliCtx *cli.Context) error {
 		return err
 	}
 
+	log.Infof("c.DB.Password: %s", c.DB.Password)
 	c.DB.Password, err = getDBPassword(c.DB.Password)
 	if err != nil {
 		log.Fatal(err)
