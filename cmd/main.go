@@ -24,7 +24,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli/v2"
 	kms "gitlab.okg.com/okcoin-commons/ok-kms-go-client/kms"
-	// "gitlab.okg.com/okcoin-commons/ok-kms-go-client/kms"
 )
 
 const appName = "zkevm-pool-manager"
@@ -97,7 +96,6 @@ func start(cliCtx *cli.Context) error {
 		return err
 	}
 
-	log.Infof("c.DB.Password: %s", c.DB.Password)
 	c.DB.Password, err = getDBPassword(c.DB.Password)
 	if err != nil {
 		log.Fatal(err)
