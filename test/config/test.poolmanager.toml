@@ -15,7 +15,7 @@ BatchRequestsLimit = 20
 
 [DB]
 User = "pool_user"
-Password = "pool_password"
+Password = "{encrypt}_testnet2_plmgr_db_pwd"
 Name = "pool_db"
 Host = "zkevm-pool-db"
 Port = "5432"
