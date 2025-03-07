@@ -1,14 +1,13 @@
 go env -w GONOPROXY=gitlab.okg.com && GOPROXY=goproxy.okg.com && go env -w GOPRIVATE=gitlab.okg.com && git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.okg.com/".insteadOf https://gitlab.okg.com/
 
-# Remove replace directive for kms-bridge (if exists) to ensure we use the real repository
+# Remove replace directive for KMS dependencies
 go mod edit -dropreplace gitlab.okg.com/okchain/kms-bridge
-
-# Ensure we have the kms-bridge dependency
-echo "Adding/Updating KMS bridge dependency..."
-go get gitlab.okg.com/okchain/kms-bridge
-
-# Continue with other replace drops
 go mod edit -dropreplace gitlab.okg.com/okcoin-commons/ok-kms-go-client
+
+# Remove KMS bridge dependency to avoid fetching issues
+go mod edit -droprequire gitlab.okg.com/okchain/kms-bridge
+
+# Ensure we have other dependencies
 go mod tidy && go mod download && go mod verify
 
 echo "finish replace..."
@@ -19,17 +18,33 @@ cd db && packr2
 
 cd ..
 
-# Inject KMS bridge initialization code
-echo "Injecting KMS bridge code..."
+# Inject KMS bridge initialization code with inline implementation
+echo "Injecting KMS bridge code with inline implementation..."
 echo 'package main
 
 import (
-    "gitlab.okg.com/okchain/kms-bridge"
+    "github.com/okx/kms-interface/kms"
+    realkms "gitlab.okg.com/okcoin-commons/ok-kms-go-client/kms"
 )
+
+// Internal implementation of the bridge
+type internalKMSBridge struct{}
+
+func (b *internalKMSBridge) Init() error {
+    return realkms.Init()
+}
+
+func (b *internalKMSBridge) GetAwsSecretValue(key string) (string, error) {
+    return realkms.GetAwsSecretValue(key)
+}
+
+func (b *internalKMSBridge) GetAwsSecretData() map[string]error {
+    return realkms.GetAwsSecretData()
+}
 
 // init sets up the real KMS implementation at application startup
 func init() {
-    kmsbridge.SetupRealKMS()
+    kms.Provider = &internalKMSBridge{}
 }' > cmd/internal_init.go
 
 # BUILD BINARY
