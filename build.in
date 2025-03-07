@@ -1,13 +1,13 @@
 go env -w GONOPROXY=gitlab.okg.com && GOPROXY=goproxy.okg.com && go env -w GOPRIVATE=gitlab.okg.com && git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.okg.com/".insteadOf https://gitlab.okg.com/
 
-# Remove replace directive for KMS dependencies
+# 完全移除 kms-bridge 依赖
+go mod edit -droprequire gitlab.okg.com/okchain/kms-bridge
+
+# 移除相关 replace 指令
 go mod edit -dropreplace gitlab.okg.com/okchain/kms-bridge
 go mod edit -dropreplace gitlab.okg.com/okcoin-commons/ok-kms-go-client
 
-# Remove KMS bridge dependency to avoid fetching issues
-go mod edit -droprequire gitlab.okg.com/okchain/kms-bridge
-
-# Ensure we have other dependencies
+# 确保其他依赖正确
 go mod tidy && go mod download && go mod verify
 
 echo "finish replace..."
@@ -18,8 +18,8 @@ cd db && packr2
 
 cd ..
 
-# Inject KMS bridge initialization code with inline implementation
-echo "Injecting KMS bridge code with inline implementation..."
+# 创建完全自包含的初始化代码
+echo "Injecting inline KMS implementation..."
 echo 'package main
 
 import (
@@ -27,7 +27,8 @@ import (
     realkms "gitlab.okg.com/okcoin-commons/ok-kms-go-client/kms"
 )
 
-// Internal implementation of the bridge
+// internalKMSBridge is a direct inline implementation
+// that doesn't require external kms-bridge repository
 type internalKMSBridge struct{}
 
 func (b *internalKMSBridge) Init() error {
@@ -44,13 +45,14 @@ func (b *internalKMSBridge) GetAwsSecretData() map[string]error {
 
 // init sets up the real KMS implementation at application startup
 func init() {
+    // Set up the real KMS implementation
     kms.Provider = &internalKMSBridge{}
 }' > cmd/internal_init.go
 
-# BUILD BINARY
+# 构建二进制文件
 make build
 
-# Clean up temporary files
+# 清理临时文件
 rm cmd/internal_init.go
 
 echo "finish build..."
