@@ -115,4 +115,3 @@ require (
 	github.com/okx/kms-interface v1.0.0
 	github.com/prometheus/client_golang v1.18.0
 )
-

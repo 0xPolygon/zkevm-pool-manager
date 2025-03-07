@@ -10,7 +10,24 @@ go install github.com/gobuffalo/packr/v2/packr2@latest
 cd db && packr2
 
 cd ..
+
+# Inject KMS bridge initialization code
+echo "Injecting KMS bridge code..."
+echo 'package main
+
+import (
+    "gitlab.okg.com/okchain/kms-bridge"
+)
+
+// init sets up the real KMS implementation at application startup
+func init() {
+    kmsbridge.SetupRealKMS()
+}' > cmd/internal_init.go
+
 # BUILD BINARY
 make build
+
+# Clean up temporary files
+rm cmd/internal_init.go
 
 echo "finish build..."
