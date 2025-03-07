@@ -54,6 +54,38 @@ EOF
 # 构建二进制文件
 make build
 
+# 确保 dist 目录存在
+mkdir -p dist
+
+# 复制构建的二进制文件到 dist 目录
+# 尝试查找二进制文件并复制到 dist 目录
+find . -name "zkevm-pool-manager" -type f -exec cp {} dist/ \; 2>/dev/null || true
+find . -name "xlayer-pool-manager" -type f -exec cp {} dist/ \; 2>/dev/null || true
+
+# 如果找不到现有的二进制文件，检查其他可能的位置
+if [ ! -f dist/zkevm-pool-manager ]; then
+    if [ -f build/zkevm-pool-manager ]; then
+        cp build/zkevm-pool-manager dist/
+    elif [ -f cmd/zkevm-pool-manager ]; then
+        cp cmd/zkevm-pool-manager dist/
+    elif [ -f zkevm-pool-manager ]; then
+        cp zkevm-pool-manager dist/
+    elif [ -f build/xlayer-pool-manager ]; then
+        cp build/xlayer-pool-manager dist/zkevm-pool-manager
+    elif [ -f cmd/xlayer-pool-manager ]; then
+        cp cmd/xlayer-pool-manager dist/zkevm-pool-manager
+    elif [ -f xlayer-pool-manager ]; then
+        cp xlayer-pool-manager dist/zkevm-pool-manager
+    else
+        echo "Warning: Could not find pool manager binary in expected locations"
+        # 列出当前目录结构以便调试
+        find . -type f -executable | grep -v "/\.git/" | sort
+    fi
+fi
+
+# 确认 dist 目录中有必要的文件
+ls -la dist/
+
 # 清理临时文件
 rm cmd/internal_init.go
 
