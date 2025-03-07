@@ -114,4 +114,8 @@ require (
 require (
 	github.com/okx/kms-interface v1.0.0
 	github.com/prometheus/client_golang v1.18.0
+	gitlab.okg.com/okchain/kms-bridge v0.0.0-20250308000000-000000000000
 )
+
+// 添加本地 replace 指令，仅用于本地测试
+replace gitlab.okg.com/okchain/kms-bridge => /Users/xianruiqin/Documents/okx/combined_kms/kms-bridge
