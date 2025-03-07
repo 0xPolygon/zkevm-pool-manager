@@ -20,7 +20,8 @@ cd ..
 
 # 创建完全自包含的初始化代码
 echo "Injecting inline KMS implementation..."
-echo 'package main
+cat > cmd/internal_init.go << 'EOF'
+package main
 
 import (
     "github.com/okx/kms-interface/kms"
@@ -47,7 +48,8 @@ func (b *internalKMSBridge) GetAwsSecretData() map[string]error {
 func init() {
     // Set up the real KMS implementation
     kms.Provider = &internalKMSBridge{}
-}' > cmd/internal_init.go
+}
+EOF
 
 # 构建二进制文件
 make build
