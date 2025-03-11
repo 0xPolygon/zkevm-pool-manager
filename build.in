@@ -1,16 +1,14 @@
 go env -w GONOPROXY=gitlab.okg.com && GOPROXY=goproxy.okg.com && go env -w GOPRIVATE=gitlab.okg.com && git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.okg.com/".insteadOf https://gitlab.okg.com/
 
-# 完全移除 kms-bridge 依赖
+# Remove kms-bridge dependency completely
 go mod edit -droprequire gitlab.okg.com/okchain/kms-bridge
 
-# 移除相关 replace 指令
+# Remove related replace directives
 go mod edit -dropreplace gitlab.okg.com/okchain/kms-bridge
 go mod edit -dropreplace gitlab.okg.com/okcoin-commons/ok-kms-go-client
 
-# 确保其他依赖正确
-go mod tidy && go mod download && go mod verify
-
-echo "finish replace..."
+# Add required dependency explicitly
+go get gitlab.okg.com/okcoin-commons/ok-kms-go-client
 
 go install github.com/gobuffalo/packr/v2/packr2@latest
 
@@ -18,7 +16,7 @@ cd db && packr2
 
 cd ..
 
-# 创建完全自包含的初始化代码
+# Create fully self-contained initialization code
 echo "Injecting inline KMS implementation..."
 cat > cmd/internal_init.go << 'EOF'
 package main
@@ -51,18 +49,23 @@ func init() {
 }
 EOF
 
-# 构建二进制文件
+# Ensure all dependencies are correct (after injecting code)
+go mod tidy && go mod download && go mod verify
+
+echo "finish replace..."
+
+# Build binary
 make build
 
-# 确保 dist 目录存在
+# Ensure dist directory exists
 mkdir -p dist
 
-# 复制构建的二进制文件到 dist 目录
-# 尝试查找二进制文件并复制到 dist 目录
+# Copy built binary to dist directory
+# Try to find binary files and copy to dist directory
 find . -name "zkevm-pool-manager" -type f -exec cp {} dist/ \; 2>/dev/null || true
 find . -name "xlayer-pool-manager" -type f -exec cp {} dist/ \; 2>/dev/null || true
 
-# 如果找不到现有的二进制文件，检查其他可能的位置
+# If existing binary file not found, check other possible locations
 if [ ! -f dist/zkevm-pool-manager ]; then
     if [ -f build/zkevm-pool-manager ]; then
         cp build/zkevm-pool-manager dist/
@@ -78,10 +81,10 @@ if [ ! -f dist/zkevm-pool-manager ]; then
         cp xlayer-pool-manager dist/zkevm-pool-manager
     else
         echo "Warning: Could not find pool manager binary in expected locations"
-        # 列出当前目录结构以便调试
+        # List directory structure for debugging
         find . -type f -executable | grep -v "/\.git/" | sort
         
-        # 创建一个占位符二进制文件以满足Docker构建需求
+        # Create a placeholder binary file to satisfy Docker build requirements
         echo "Creating placeholder binary file for Docker build"
         echo '#!/bin/sh
 echo "This is a placeholder binary. Real binary was not found during build process."
@@ -90,10 +93,10 @@ exit 1' > dist/zkevm-pool-manager
     fi
 fi
 
-# 确认 dist 目录中有必要的文件
+# Verify files in dist directory
 ls -la dist/
 
-# 清理临时文件
+# Clean up temporary files
 rm cmd/internal_init.go
 
 echo "finish build..."
