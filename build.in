@@ -7,8 +7,11 @@ go mod edit -droprequire gitlab.okg.com/okchain/kms-bridge
 go mod edit -dropreplace gitlab.okg.com/okchain/kms-bridge
 go mod edit -dropreplace gitlab.okg.com/okcoin-commons/ok-kms-go-client
 
-# Add required dependency explicitly
-go get gitlab.okg.com/okcoin-commons/ok-kms-go-client
+# Add required dependency explicitly using direct module edit
+go mod edit -require gitlab.okg.com/okcoin-commons/ok-kms-go-client@latest
+go mod download gitlab.okg.com/okcoin-commons/ok-kms-go-client
+
+echo "finish dependency setup..."
 
 go install github.com/gobuffalo/packr/v2/packr2@latest
 
@@ -49,10 +52,8 @@ func init() {
 }
 EOF
 
-# Ensure all dependencies are correct (after injecting code)
-go mod tidy && go mod download && go mod verify
-
-echo "finish replace..."
+# Download dependencies without running tidy
+go mod download
 
 # Build binary
 make build
