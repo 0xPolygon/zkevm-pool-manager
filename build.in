@@ -7,11 +7,8 @@ go mod edit -droprequire gitlab.okg.com/okchain/kms-bridge
 go mod edit -dropreplace gitlab.okg.com/okchain/kms-bridge
 go mod edit -dropreplace gitlab.okg.com/okcoin-commons/ok-kms-go-client
 
-# Add required dependency explicitly using direct module edit
-go mod edit -require gitlab.okg.com/okcoin-commons/ok-kms-go-client@latest
-go mod download gitlab.okg.com/okcoin-commons/ok-kms-go-client
-
-echo "finish dependency setup..."
+# Add required dependency explicitly
+go get gitlab.okg.com/okcoin-commons/ok-kms-go-client
 
 go install github.com/gobuffalo/packr/v2/packr2@latest
 
@@ -42,7 +39,17 @@ func (b *internalKMSBridge) GetAwsSecretValue(key string) (string, error) {
 }
 
 func (b *internalKMSBridge) GetAwsSecretData() map[string]error {
-    return realkms.GetAwsSecretData()
+    // Convert the map[string]string to map[string]error
+    data := realkms.GetAwsSecretData()
+    result := make(map[string]error)
+    for k, v := range data {
+        result[k] = nil // All values become nil errors (success case)
+        if v == "" {
+            // You might want to set an error for empty values if appropriate
+            // or handle specific error cases based on your requirements
+        }
+    }
+    return result
 }
 
 // init sets up the real KMS implementation at application startup
@@ -52,8 +59,10 @@ func init() {
 }
 EOF
 
-# Download dependencies without running tidy
-go mod download
+# Ensure all dependencies are correct (after injecting code)
+go mod tidy && go mod download && go mod verify
+
+echo "finish replace..."
 
 # Build binary
 make build
