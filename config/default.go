@@ -32,6 +32,8 @@ ResendTxsCheckInterval = "5s"
 Workers = 5
 QueueSize = 25
 RPCReadTimeout = "3s"
+DailTimeout = "30s"
+KeepAlive = "120s"
 
 [Monitor]
 L2NodeURL = "http://localhost:8467"
@@ -41,4 +43,6 @@ RetryWaitInterval = "3s"
 InitialWaitInterval = "3s"
 TxLifeTimeMax = "30m"
 RPCReadTimeout = "3s"
+DailTimeout = "30s"
+KeepAlive = "120s"
 `

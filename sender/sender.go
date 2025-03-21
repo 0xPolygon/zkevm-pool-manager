@@ -2,12 +2,15 @@ package sender
 
 import (
 	"context"
+	"net"
+	"net/http"
 	"sync"
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-pool-manager/log"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/jackc/pgx/v4"
 )
 
@@ -78,12 +81,21 @@ func (s *Sender) enqueueSenderRequest(request *sendRequest) {
 }
 
 func (s *Sender) startSenderWorker(workerNum int) {
-	seqClient, err := ethclient.Dial(s.cfg.SequencerURL)
 
+	httpClient := rpc.WithHTTPClient(&http.Client{
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   s.cfg.DialTimeout.Duration,
+				KeepAlive: s.cfg.KeepAlive.Duration,
+			}).DialContext,
+		},
+	})
+	rclient, err := rpc.DialOptions(context.Background(), s.cfg.SequencerURL, httpClient)
 	if err != nil {
 		log.Errorf("sender-worker[%03d]: error creating sequencer client for %s, err: %v", workerNum, s.cfg.SequencerURL, err)
 		return
 	}
+	seqClient := ethclient.NewClient(rclient)
 
 	log.Debugf("sender-worker[%03d]: started", workerNum)
 	for sendRequest := range s.requestChan {
