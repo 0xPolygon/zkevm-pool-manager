@@ -108,7 +108,10 @@ func (m *Monitor) workerProcessRequest(request *monitorRequest, rpcClient *ethcl
 		} else {
 			log.Debugf("monitor-worker[%03d]: receipt for tx %s still not available, schedule retry", workerNum, request.l2Tx.Tag())
 		}
-		m.scheduleRequestRetry(request)
+		// For resend tx
+		if !m.tryResendTx(ctx, rpcClient, request, workerNum) {
+			m.scheduleRequestRetry(request)
+		}
 	} else {
 		l2TxStatus := types.TxStatusConfirmed
 		if receipt.Status == 0 {
@@ -167,4 +170,19 @@ func (m *Monitor) monitorL2TransactionsFromPoolDB() {
 	for _, l2Tx := range l2Txs {
 		m.AddL2Transaction(l2Tx)
 	}
+}
+
+func (m *Monitor) tryResendTx(ctx context.Context, rpcClient *ethclient.Client, request *monitorRequest, workerNum int) bool {
+	_, _, err := rpcClient.TransactionByHash(ctx, common.HexToHash(request.l2Tx.Hash))
+	if !errors.Is(err, ethereum.NotFound) {
+		return false
+	}
+	log.Warnf("monitor-worker[%03d], getting tx by hash not found! %s, error: %v", workerNum, request.l2Tx.Tag(), err)
+	err = m.poolDB.UpdateL2TransactionStatus(context.Background(), request.l2Tx.Id, types.TxStatusResend, "")
+	if err != nil {
+		log.Errorf("error updating tx %s status (%s) in the pool db, error: %v", request.l2Tx.Tag(), types.TxStatusSent, err)
+		return false
+	}
+
+	return true
 }
