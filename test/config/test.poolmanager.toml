@@ -34,4 +34,4 @@ Workers = 5
 QueueSize = 25
 RetryWaitInterval = "3s"
 InitialWaitInterval = "1s"
-TxLifeTimeMax = "10s"
+TxLifeTimeMax = "60s"

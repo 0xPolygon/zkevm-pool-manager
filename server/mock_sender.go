@@ -3,7 +3,7 @@
 package server
 
 import (
-	db "github.com/0xPolygonHermez/zkevm-pool-manager/db"
+	types "github.com/0xPolygonHermez/zkevm-pool-manager/types"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -13,7 +13,7 @@ type senderMock struct {
 }
 
 // SendL2Transaction provides a mock function with given fields: l2Tx
-func (_m *senderMock) SendL2Transaction(l2Tx *db.L2Transaction) error {
+func (_m *senderMock) SendL2Transaction(l2Tx *types.L2Transaction) error {
 	ret := _m.Called(l2Tx)
 
 	if len(ret) == 0 {
@@ -21,7 +21,7 @@ func (_m *senderMock) SendL2Transaction(l2Tx *db.L2Transaction) error {
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*db.L2Transaction) error); ok {
+	if rf, ok := ret.Get(0).(func(*types.L2Transaction) error); ok {
 		r0 = rf(l2Tx)
 	} else {
 		r0 = ret.Error(0)

@@ -15,4 +15,7 @@ type Config struct {
 
 	// QueueSize is the size of the queue for L2 txs that need to be sent to the sequencer
 	QueueSize uint16 `mapstructure:"QueueSize"`
+
+	// RPCReadTimeout is the timeout for the RPC client to read the response from the L2 node
+	RPCReadTimeout types.Duration `mapstructure:"RPCReadTimeout"`
 }

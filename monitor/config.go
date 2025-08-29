@@ -21,4 +21,7 @@ type Config struct {
 
 	// TxLifetimeMax is the time a tx can be monitored waiting for the receipt
 	TxLifeTimeMax types.Duration `mapstructure:"TxLifeTimeMax"`
+
+	// RPCReadTimeout is the timeout for the RPC client to read the response from the L2 node
+	RPCReadTimeout types.Duration `mapstructure:"RPCReadTimeout"`
 }

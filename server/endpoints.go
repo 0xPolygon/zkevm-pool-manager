@@ -6,11 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0xPolygonHermez/zkevm-pool-manager/db"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/hex"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/log"
+	"github.com/0xPolygonHermez/zkevm-pool-manager/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -51,44 +50,43 @@ func (e *Endpoints) SendRawTransaction(httpRequest *http.Request, input string) 
 	// Get from address
 	fromAddress, err := GetSender(*tx)
 	if err != nil {
-		log.Errorf("error getting from address for tx %s, error: %v", tx.Hash(), err)
-		return nil, NewServerErrorWithData(ParserErrorCode, "error getting from address", nil)
+		log.Warnf("error getting from address for tx %s, error: %v", tx.Hash(), err)
 	}
 
 	log.Debugf("adding tx %s to the pool", tx.Hash())
 
-	l2Tx := &db.L2Transaction{
+	l2Tx := &types.L2Transaction{
 		Hash:        tx.Hash().String(),
 		ReceivedAt:  time.Now(),
 		FromAddress: fromAddress.String(),
 		GasPrice:    tx.GasPrice().Uint64(),
 		Nonce:       tx.Nonce(),
-		Status:      db.TxStatusPending,
+		Status:      types.TxStatusPending,
 		IP:          ip,
 		Encoded:     input,
 		Decoded:     decoded,
 	}
 
-	err = e.poolDB.AddL2Transaction(context.Background(), l2Tx)
+	l2Tx.Id, err = e.poolDB.AddL2Transaction(context.Background(), l2Tx)
 	if err != nil {
-		log.Errorf("error adding tx to pool db, error: %v", err)
-		return nil, NewServerErrorWithData(DefaultErrorCode, "error adding tx to the pool database", nil)
+		log.Errorf("error adding tx %s to pool db, error: %v", l2Tx.Tag(), err)
 	}
 
 	err = e.sender.SendL2Transaction(l2Tx)
 
 	if err != nil {
+		log.Infof("sending tx %s to sequencer returns error: %v", l2Tx.Tag(), err)
 		return nil, NewServerErrorWithData(DefaultErrorCode, err.Error(), nil)
 	}
 
-	log.Infof("added tx %s to the pool", tx.Hash())
+	log.Infof("tx %s sent to sequencer and added to the pool database", l2Tx.Tag())
 
 	return tx.Hash().String(), nil
 }
 
 // GetSender gets the sender from the transaction's signature
-func GetSender(tx types.Transaction) (common.Address, error) {
-	signer := types.NewEIP155Signer(tx.ChainId())
+func GetSender(tx ethTypes.Transaction) (common.Address, error) {
+	signer := ethTypes.NewEIP155Signer(tx.ChainId())
 	sender, err := signer.Sender(&tx)
 	if err != nil {
 		return common.Address{}, err
