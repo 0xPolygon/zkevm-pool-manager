@@ -19,11 +19,7 @@ services:
     ports:
       - 8545:8545
     volumes:
-      - ./test/config/test.poolmanager.toml:/app/poolmanager.toml
-    command:
-      - "/bin/sh"
-      - "-c"
-      - "/app/zkevm-pool-manager run --cfg /app/poolmanager.toml"
+      - ./test/config/test.poolmanager.toml:/app/poolmanager.toml:ro
 
   zkevm-pool-db:
     container_name: zkevm-pool-db
