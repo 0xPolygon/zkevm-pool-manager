@@ -3,6 +3,8 @@ package monitor
 import (
 	"context"
 	"errors"
+	"net"
+	"net/http"
 	"sync"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
 type Monitor struct {
@@ -68,12 +71,20 @@ func (m *Monitor) enqueueMonitorRequest(request *monitorRequest) {
 }
 
 func (m *Monitor) startMonitorWorker(workerNum int) {
-	rpcClient, err := ethclient.Dial(m.cfg.L2NodeURL)
-
+	httpClient := rpc.WithHTTPClient(&http.Client{
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   m.cfg.DialTimeout.Duration,
+				KeepAlive: m.cfg.KeepAlive.Duration,
+			}).DialContext,
+		},
+	})
+	rclient, err := rpc.DialOptions(context.Background(), m.cfg.L2NodeURL, httpClient)
 	if err != nil {
 		log.Errorf("monitor-worker[%03d]: error creating rpc client for %s, err: %v", workerNum, m.cfg.L2NodeURL, err)
 		return
 	}
+	rpcClient := ethclient.NewClient(rclient)
 
 	log.Debugf("monitor-worker[%03d]: started", workerNum)
 	for monitorRequest := range m.requestChan {

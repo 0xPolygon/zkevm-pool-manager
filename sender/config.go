@@ -1,6 +1,8 @@
 package sender
 
-import "github.com/0xPolygonHermez/zkevm-pool-manager/config/types"
+import (
+	"github.com/0xPolygonHermez/zkevm-pool-manager/config/types"
+)
 
 // Config for pool-manager sender
 type Config struct {
@@ -18,4 +20,10 @@ type Config struct {
 
 	// RPCReadTimeout is the timeout for the RPC client to read the response from the L2 node
 	RPCReadTimeout types.Duration `mapstructure:"RPCReadTimeout"`
+
+	// DialTimeout is the maximum amount of time a dial will wait for a connect to complete.
+	DialTimeout types.Duration `mapstructure:"DailTimeout"`
+
+	// KeepAlive specifies the interval between keep-alive probes for an active network connection.
+	KeepAlive types.Duration `mapstructure:"KeepAlive"`
 }
