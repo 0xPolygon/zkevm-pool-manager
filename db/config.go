@@ -22,4 +22,7 @@ type Config struct {
 
 	// MaxConns is the maximum number of connections in the pool.
 	MaxConns int `mapstructure:"MaxConns"`
+
+	// QueryLimit is the query limit number of select queries
+	QueryLimit int `mapstructure:"QueryLimit"`
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/0xPolygonHermez/zkevm-pool-manager/db"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/log"
+	"github.com/0xPolygonHermez/zkevm-pool-manager/metrics"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/monitor"
 	"github.com/0xPolygonHermez/zkevm-pool-manager/sender"
 	server "github.com/0xPolygonHermez/zkevm-pool-manager/server"
@@ -41,6 +42,9 @@ type Config struct {
 
 	// Monitor configuration
 	Monitor monitor.Config
+
+	// Metrics configuration
+	Metrics metrics.Config
 }
 
 // Default parses the default configuration values.
