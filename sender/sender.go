@@ -2,6 +2,7 @@ package sender
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -116,11 +117,20 @@ func (s *Sender) checkL2TransactionsToResend() {
 		}
 
 		for _, l2Tx := range txs {
+			txTag := l2Tx.Tag()
 			err := s.SendL2Transaction(l2Tx)
 			if err != nil {
 				log.Infof("resending tx %s to sequencer returns error: %v", l2Tx.Tag(), err)
+				// For resend tx
+				if s.checkNeedResendError(txTag, err) {
+					log.Warnf("error sending tx %s to sequencer, connection refused, will change to resend again", txTag)
+					err = s.poolDB.UpdateL2TransactionStatus(context.Background(), l2Tx.Id, types.TxStatusResend, "")
+					if err != nil {
+						log.Errorf("resending error, updating tx %s status (%s) in the pool db, error: %v", txTag, types.TxStatusSent, err)
+					}
+				}
 			} else {
-				log.Infof("tx %s resent to sequencer", l2Tx.Tag())
+				log.Infof("tx %s resent to sequencer", txTag)
 			}
 		}
 
@@ -144,4 +154,18 @@ func (s *Sender) sendL2TransactionsFromPoolDB() {
 			log.Infof("tx %s sent to sequencer", l2Tx.Tag())
 		}
 	}
+}
+
+func (s *Sender) checkNeedResendError(txTag string, err error) bool {
+	if err == nil {
+		return false
+	}
+	log.Infof("checkNeedResendError:%v, %v", txTag, err)
+	if strings.Contains(err.Error(), "connection refused") ||
+		strings.Contains(err.Error(), "EOF") ||
+		strings.Contains(err.Error(), "deadline exceeded") ||
+		strings.Contains(err.Error(), "no such host") {
+		return true
+	}
+	return false
 }
